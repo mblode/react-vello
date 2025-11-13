@@ -1,0 +1,24 @@
+{
+  "name": "react-vello-workspace",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "packageManager": "pnpm@9.12.3",
+  "engines": {
+    "node": ">=20.11.0"
+  },
+  "scripts": {
+    "dev": "turbo dev",
+    "build": "turbo build",
+    "test": "turbo test",
+    "lint": "turbo lint",
+    "typecheck": "turbo typecheck",
+    "clean": "turbo clean && rm -rf node_modules pnpm-lock.yaml",
+    "wasm:build": "wasm-pack build crates/rvello --out-dir pkg --target web --release",
+    "wasm:watch": "wasm-pack build crates/rvello --out-dir pkg --target web --dev --watch"
+  },
+  "devDependencies": {
+    "turbo": "^2.1.3",
+    "typescript": "~5.9.3"
+  }
+}

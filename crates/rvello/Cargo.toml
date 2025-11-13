@@ -1,0 +1,23 @@
+[package]
+name = "rvello"
+version = "0.0.1"
+edition = "2021"
+authors = ["React Vello <dev@example.com>"]
+license = "MIT"
+description = "WASM bindings for the React + Vello renderer"
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[features]
+default = ["web"]
+web = []
+
+[dependencies]
+console_error_panic_hook = "0.1"
+js-sys = "0.3"
+wasm-bindgen = { version = "0.2.92", features = ["serde-serialize"] }
+wasm-bindgen-futures = "0.4"
+vello = { version = "0.6", default-features = false, features = ["std", "wgpu"] }
+wgpu = { version = "0.27", default-features = false, features = ["webgl", "wgsl"] }
+winit = { version = "0.30", default-features = false, features = ["web-sys"] }

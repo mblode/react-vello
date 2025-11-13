@@ -1,0 +1,15 @@
+{
+  "rust-analyzer.cargo.target": "wasm32-unknown-unknown",
+  "rust-analyzer.checkOnSave.command": "clippy",
+  "files.associations": {
+    "*.wgsl": "wgsl"
+  },
+  "debug.javascript.defaultRuntimeExecutable": {
+    "pwa-node": "node --experimental-wasm-simd"
+  },
+  "debug.javascript.terminalOptions": {
+    "env": {
+      "WGPU_BACKEND": "webgpu"
+    }
+  }
+}
