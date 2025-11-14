@@ -4,6 +4,8 @@
 
 Build a React renderer that lets developers write type‑safe JSX/TSX to describe a 2D scene graph which renders via WebGPU. The runtime targets Vello directly (Rust/WASM). Vello is a compute‑centric 2D renderer on `wgpu` and runs on the web via WebGPU. React integration is done through `react-reconciler`. ([Docs.rs][1])
 
+React’s default DOM renderer is excellent for traditional UI, but it struggles when teams need deterministic frame budgets, access to raw GPU surfaces, or platforms that don’t expose the DOM at all. Custom renderers fill that gap by letting us keep React’s declarative ergonomics while targeting new hosts—WebGPU canvases, native view hierarchies, XR shells, even IoT hardware. This project embraces that pattern for high-throughput 2D scenes.
+
 ### Problem statement
 
 - React teams producing data‑dense UIs cannot use WebGPU directly today without dropping to imperative Canvas/WebGL code or Rust glue, creating a steep learning curve and duplicate scene graphs.
@@ -31,6 +33,13 @@ Build a React renderer that lets developers write type‑safe JSX/TSX to describ
 - SharedArrayBuffer ring buffers or worker renderer paths require cross-origin isolation (COOP/COEP) and explicit documentation for integrators.
 - Native wgpu/winit hosts are out of scope; the renderer only targets browser WebGPU surfaces.
 
+### Why a custom renderer?
+
+- Default React DOM diffing cannot keep up with thousands of per-frame updates plus GPU-side layout, especially in streaming dashboards (e.g., live stock market heatmaps) or interactive canvases. A custom renderer lets us bypass DOM overhead entirely.
+- Specialized hosts—including VR HUDs, native shells, or secure in-browser sandboxes—often forbid DOM access. The reconciler-only approach means the same JSX can target OffscreenCanvas/WebGPU workers with zero DOM dependencies.
+- Declarative GPU scenes improve maintainability versus imperative WebGL code. Teams can share hooks/state between DOM panels and GPU primitives, rather than maintaining parallel scene graphs.
+- Enhanced perf (higher frame rates, lower GC churn) and memory determinism unlock experiences that would otherwise require bespoke engines, keeping React viable in data viz, design tools, and simulation dashboards.
+
 ## Competitive landscape
 
 | Solution | Strengths | Gaps for this product |
@@ -43,6 +52,21 @@ Build a React renderer that lets developers write type‑safe JSX/TSX to describ
 - Differentiator: first-class 2D focus with Vello’s quality bar, React ergonomics, and WebGPU-native perf without forcing teams to author raw Rust/WebGL glue.
 - Interop: we can still embed CanvasKit/Pixi layers via `<Image>` nodes for niche use cases, but keeping the primary API declarative avoids scene duplication.
 - Positioning: pitch as “R3F for 2D data viz” so React teams instantly understand the mental model while unlocking WebGPU-class throughput.
+
+---
+
+## Real-world precedents & benefits
+
+- **React Three Fiber** shows how a reconciler can wrap a GPU engine (Three.js) with idiomatic JSX, enabling declarative 3D scenes. We adopt the same playbook for 2D WebGPU.
+- **React Native** demonstrates that React components can hydrate entirely different host elements (UIKit, Android Views) as long as the reconciler/host config speaks the right language.
+- **React ART, React PDF, and React Hardware** highlight how renderers can target Canvas/SVG, PDF streams, or even microcontrollers—evidence that React’s model thrives beyond the DOM.
+- **IoT/VR/AR shells**: custom renderers let teams reuse state + business logic while projecting UI into headsets, kiosks, or sensor dashboards that lack DOM APIs.
+
+**Benefits relevant to this project**
+- Declarative syntax + familiar hooks keep GPU pipelines maintainable.
+- Code reuse: share components and state machines between DOM panels, shader-driven canvases, and documentation (e.g., PDF export paths).
+- Ecosystem leverage: we still use Suspense, concurrent rendering, devtools, and the broader React tooling stack.
+- Abstraction: teams focus on scene semantics while the renderer handles low-level WebGPU buffer management, diffing, and scheduling.
 
 ---
 
@@ -122,6 +146,23 @@ These journeys ensure adoption conversations stay grounded in day-to-day workflo
 
 - Canvas rendering needs explicit a11y overlays; provide an optional DOM layer mapping focusable nodes to DOM elements with ARIA.
 - Ship a slim, web-only AccessKit mirror (`@react-vello/accesskit`) that exposes the same semantics tree API but serialises directly to DOM overlays, ensuring parity with native hosts without pulling the full toolkit stack. ([AccessKit][8])
+
+### React-reconciler + Fiber background
+
+- `react-reconciler` is the low-level package we use to build custom renderers. It exposes the host config surface (createInstance, appendChild, commitUpdate, etc.) and hands us control over how JSX elements map to host objects (WebGPU ops, DOM nodes, PDFs, hardware pins, …). We rely on it to translate React state updates into Vello op streams.
+- The reconciler rides on React’s Fiber architecture, so our renderer automatically benefits from concurrent rendering, Suspense, transitions, and priority scheduling.
+- **Fiber node anatomy:** each fiber stores the component type, key, pending props/state, and pointers (`child`, `sibling`, `return`) that form a tree mirroring our scene graph. We translate terminal nodes into GPU ops rather than DOM nodes.
+- **Dual trees:** React keeps a work-in-progress fiber tree while reconciling updates and a committed tree representing what’s currently visible. When the commit phase completes, the WIP tree becomes the new committed tree—our renderer uses the committed snapshot to emit deterministic op buffers per frame.
+- **Lifecycle summary:** initialize fiber (type/props), reconcile pending updates, render (build GPU ops), commit (apply updates + schedule WebGPU submission), cleanup (release resources, reuse fibers). We align Vello container lifecycles with these phases so batching and suspense work as expected.
+
+### Custom renderer implementation playbook
+
+1. **Bootstrap environment:** scaffold the monorepo (Vite examples + pnpm workspaces), install `react-reconciler`, and ensure the WASM toolchain targets `wasm32-unknown-unknown`.
+2. **Host config:** implement the mandatory host config methods (`createInstance`, `appendChild`, `commitUpdate`, etc.). For now they build an in-memory scene tree; later we encode ops / call into WASM.
+3. **Bridge entry point:** expose `createVelloRoot(canvas)` that calls `Reconciler.createContainer` and returns `{ render, unmount }`, mirroring `ReactDOM.createRoot`.
+4. **Runtime + encoder:** sanitize props, maintain a retained tree, and serialize primitives into a compact binary format (`BeginFrame`, `Rect`, …). The Canvas2D preview renderer uses the same tree to draw a fallback visualization.
+5. **WASM/WebGPU layer:** in Rust, decode the op buffer, rebuild a `vello::Scene`, and submit it to a WebGPU surface. We currently support Canvas + OffscreenCanvas targets, resizing, and basic error recovery.
+6. **App integration:** swap `ReactDOM.createRoot` for the custom renderer in the example app, then progressively light up host config functionality until the default React SPA renders via the new pipeline.
 
 ### Distribution & packaging
 
@@ -363,6 +404,33 @@ This API mirrors familiar React scene graphs (similar to R3F) while remaining cl
   - [x] VS Code workspace settings for debugging WASM (`.vscode/settings.json` preconfigures `wasm32` targets + wgsl highlighting).
       **Exit criteria:** `pnpm dev` runs examples with hot reload; WASM module loads; changes to any package trigger appropriate rebuilds; build cache hits on repeated builds.
 
+#### Phase 1 execution plan
+
+1. **Workspace + tooling bootstrap**
+   - Run `pnpm init` + `pnpm dlx create-turbo@latest` to generate the turborepo skeleton, then prune unused apps so only the `packages/*` and `crates/*` structure remains.
+   - Configure `tsconfig.base.json` with strict ESM, `"moduleResolution": "bundler"`, JSX `react-jsx`, and path aliases for `@react-vello/*`; share via `extends` in each package.
+   - Add `.vscode/settings.json` that pins the TypeScript SDK (`"typescript.tsdk": "node_modules/typescript/lib"`) and enables Rust WASM target support (`"rust-analyzer.cargo.target": "wasm32-unknown-unknown"`).
+2. **Caching + pipelines**
+   - Extend `turbo.json` with a dedicated `wasm` pipeline: `"wasm": { "outputs": ["crates/rvello/pkg/**", "crates/rvello/target/wasm32-unknown-unknown/**"], "inputs": ["crates/rvello/src/**/*.rs", "crates/rvello/Cargo.toml", "Cargo.lock"] }`. Gate `build` on `^wasm`.
+   - Teach the JS packages to depend on the WASM artifacts by adding `"dependsOn": ["wasm", "^build"]` to `packages/react-vello/turbo.json`.
+   - Configure remote caching by setting `TURBO_TEAM`, `TURBO_TOKEN`, and documenting the `.env.local` format in `AGENTS.md`.
+3. **Watch mode + scripts**
+   - Create `turbo dev` tasks: `react-vello` runs `pnpm --filter @react-vello/react-vello dev` (tsup/watch), `examples` runs `vite`, and `rvello` runs `cargo watch -x "build --target wasm32-unknown-unknown"`.
+   - Ensure file watching propagates through pnpm filters by enabling `TURBO_FORCE=true` for local dev sessions where the WASM crate needs rebuilds.
+   - Document the dev workflow in `README`: `pnpm wasm:dev` (cargo watch) + `pnpm dev --filter @react-vello/examples`.
+4. **DX validation**
+   - Verify that editing `packages/react-vello/src/index.ts` triggers an incremental rebuild and hot reload in the example app within <2 seconds.
+   - Confirm `pnpm build` caches Rust + TypeScript outputs; rerun to ensure Turbo hits cache (logs `cache hit, replaying output`).
+   - Run `pnpm lint` (ESLint) and `pnpm typecheck` (tsc --noEmit) to guarantee baseline quality gates exist ahead of Phase 2.
+
+Manual validation checklist:
+
+1. `pnpm install` (fresh clone) finishes without peer warnings; `pnpm wasm:build` emits `crates/rvello/pkg`.
+2. `pnpm dev` launches Turbo dev orchestrator; visiting http://localhost:5173 shows the WebGPU adapter info panel from `packages/examples`.
+3. Modify a shared type (e.g., `packages/react-vello-types/src/canvas.ts`); confirm both React pkg and examples rebuild automatically.
+4. Run `pnpm build` twice; second run must complete with ≥90 % cache hits and no WASM rebuild unless source files changed.
+5. Record findings plus any perf anomalies in `docs/releases/<version>/phase-1-validation.md`.
+
 #### Phase 1 implementation notes
 
 - Workspace root now owns `pnpm-workspace.yaml`, `turbo.json`, `.gitignore`, and `tsconfig.base.json`, so every package inherits strict ESM + WebGPU typings. Shared path aliases expose `@react-vello/core` and `@react-vello/types` for both TypeScript tooling and bundlers.
@@ -382,6 +450,46 @@ This API mirrors familiar React scene graphs (similar to R3F) while remaining cl
 - [ ] TypeScript typings for intrinsic elements; prop validation.
 - [ ] Example: “Hello Vello” with interactive rect + text.
       **Exit criteria:** 60 FPS on a modest scene (<1k nodes) on Chrome; events work.
+
+#### Phase 2 execution plan
+
+1. **Host config + container bootstrap**
+   - Implement `packages/react-vello/src/reconciler.ts` that wires `react-reconciler` with mutation helpers (`createInstance`, `appendInitialChild`, `prepareUpdate`, `commitUpdate`, `finalizeInitialChildren`, `removeChild`, `detachDeletedInstance`).
+   - Container lifecycle lives in `createVelloRoot(canvas: HTMLCanvasElement, opts)`, returning `{ render, unmount }`.
+   - Schedule passive effects via `setTimeout`; ensure no custom scheduler is required for MVP.
+2. **Op buffer encoder (JS)**
+   - Define a compact binary schema (u8 op codes + f32 payloads) under `packages/react-vello/src/ops`.
+   - Provide ergonomic helpers (e.g., `pushRect`, `pushText`) that accept JSX props, normalize defaults, and write to a shared `ArrayBuffer`.
+   - Serialize props deterministically to avoid diff churn; string props map to string tables hashed during a commit.
+3. **WASM decoder + renderer (Rust)**
+   - Add `apply_ops(ptr: *const u8, len: usize)` exported via wasm-bindgen that mutates a retained `SceneBuilder`.
+   - Mirror the op schema in Rust enums; decode with minimal allocations (slice iterators + `bytemuck`).
+   - Rebuild a full `vello::Scene` each frame, then call `Renderer::render_to_surface` inside `requestAnimationFrame`.
+4. **Event bridge + hit-testing (JS)**
+   - Maintain a lightweight scene graph mirror for hit-testing (bounds, transforms, z-order) so pointer events can walk ancestors.
+   - Implement `dispatchPointerEvent` that reuses pooled event objects to minimize GC; integrate with React synthetic events contract when possible.
+5. **Working example implementation**
+   - Extend `packages/examples/src/App.tsx` with the `Hello Vello` demo (rect + text + interactive hover state).
+   - Showcase prop updates (color/opacity) and pointer move events updating React state.
+   - Document manual steps in `docs/examples/hello-vello.md` (Chrome 125+, expected FPS, fallback messaging when `navigator.gpu` is missing).
+
+#### Working example spec
+
+| Requirement | Details |
+| --- | --- |
+| Visuals | One rounded rect (“card”) with gradient fill and drop shadow approximation (layer opacity), plus a text label and optional icon image. |
+| Interactions | Pointer move updates a local state hook to display coordinates; pointer down toggles selection, showcasing event propagation + `stopPropagation`. |
+| Performance | Scene ≤25 nodes; renders at ≥60 FPS on Chrome 125 (M2 Pro / RTX 3070). Use Chrome DevTools performance tab to capture a 5‑second trace and record FPS in QA doc. |
+| Error UX | If WebGPU unsupported, example surfaces an overlay with guidance (chrome://flags, GPU info) and links to docs. |
+| Build/test | `pnpm dev --filter @react-vello/examples` starts Vite; `pnpm test --filter @react-vello/react-vello` runs unit tests for the encoder/host config. |
+
+Manual validation script:
+
+1. `pnpm install && pnpm wasm:build && pnpm dev --filter @react-vello/examples`.
+2. Open http://localhost:5173, confirm adapter info + FPS counter render.
+3. Interact with the rect/text; confirm hover state updates immediately and pointer capture works when dragging outside bounds.
+4. Inspect DevTools console for warnings; none allowed other than intentional `navigator.gpu` guidance.
+5. Capture a screenshot + short video for the release artifact folder (`docs/releases/<version>/hello-vello-demo.{png,mp4}`).
 
 ### Phase 3 — Text & font pipeline
 
@@ -446,6 +554,33 @@ This API mirrors familiar React scene graphs (similar to R3F) while remaining cl
   - [ ] Automated npm publish for TypeScript packages
   - [ ] Tag Rust crates on crates.io; changelog generation
   - [ ] Pre-release testing: canary builds on every PR
+
+### Phase 10 — Tooling hardening & automation
+
+- [ ] Expand `turbo.json` to gate `lint`, `test`, and `typecheck` stages; wire Vitest, ESLint, and `tsc --noEmit` into the workspace so every package is covered.
+- [ ] Add Playwright/Chromium smoke tests that launch the examples app, load the WASM bundle, and validate frame counters + pointer events.
+- [ ] Introduce `cargo clippy`/`cargo fmt` steps plus Wasm-bindgen ABI assertions in CI to prevent subtle Rust-side regressions.
+- [ ] Enable code coverage reporting (Vitest + `grcov` for WASM) and fail PRs that regress more than 2 pp on critical paths (encoder, reconciler host config, event bridge).
+- [ ] Configure required status checks (GitHub Actions + Turborepo remote cache) so `main` cannot advance without green JS/Rust pipelines and reproducible artifacts.
+      **Exit criteria:** every push runs the full lint/test/typecheck/clippy matrix in <15 minutes with ≥90 % coverage on core packages; red builds block merges automatically.
+
+### Phase 11 — Ecosystem enablement & templates
+
+- [ ] Stabilise `create-react-vello` scaffolder with pluggable stacks (Vite, Next.js, Remix) and publish guides for hosting COOP/COEP headers.
+- [ ] Ship Storybook + MDX example workspaces so design systems can document Vello scenes alongside React DOM components.
+- [ ] Provide adapters for popular charting/data libs (e.g., Visx, Vega-Lite) that emit React-Vello primitives without forcing teams to re-author math.
+- [ ] Publish official bindings for shared state libraries (Zustand, Jotai) showcasing idiomatic hooks and suspense-driven resource loading.
+- [ ] Stand up a “playground gallery” in `packages/examples` with dozens of copy-pasteable recipes (text layout, gradients, worker mode, a11y overlay).
+      **Exit criteria:** time-to-first-pixel from the CLI template <2 minutes; at least three partner teams (internal or external) ship pilots using the templates with documented feedback.
+
+### Phase 12 — Advanced GPU features & research
+
+- [ ] Prototype compute-driven instancing, signed-distance fields, and Vello filter hooks behind feature flags; document perf trade-offs.
+- [ ] Explore multi-canvas compositing and render-to-texture flows so complex editors can layer effects without rebuilding full scenes.
+- [ ] Implement GPU picking via ID buffers plus async readbacks, then benchmark against the CPU path to decide default heuristics.
+- [ ] Investigate progressive loading + streaming for large images/fonts (Blob slicing + background decode) to reduce first-render stalls.
+- [ ] Publish a public roadmap + RFC cadence so the community can propose new primitives, shaders, or runtime hooks with clear acceptance criteria.
+      **Exit criteria:** at least two advanced features graduate from the research branch to stable (instancing or GPU picking), accompanied by benchmarks and migration notes.
 
 ## Release strategy
 
@@ -723,3 +858,7 @@ This plan yields a React‑first developer experience while leveraging Vello for
 [14]: https://docs.rs/winit/latest/wasm32-unknown-unknown/winit/platform/web/index.html?utm_source=chatgpt.com "winit::platform::web - Rust - Docs.rs"
 [15]: https://turbo.build/repo/docs "Turborepo Documentation"
 [16]: https://github.com/changesets/changesets "Changesets - A tool for managing versioning and changelogs"
+[17]: https://skia.org/docs/user/modules/canvaskit/ "CanvasKit - Skia documentation"
+[18]: https://rive.app/community/runtime "Rive runtimes"
+[19]: https://pixijs.com/ "PixiJS"
+[20]: https://github.com/pixijs/react-pixi "react-pixi - GitHub"

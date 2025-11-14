@@ -11,8 +11,10 @@ import type {
   RectProps,
   TextProps,
   Mat3,
-  RgbaColor,
 } from '@react-vello/types'
+import { colorToCss, paintToRgba, rgbaToCss } from './color'
+import { resolveCornerRadius } from './geometry'
+import { encodeFrame } from './encoder'
 
 export type HostType =
   | 'Canvas'
@@ -49,11 +51,14 @@ export interface SceneNode<T extends HostType = HostType> {
 
 export interface CanvasContainer {
   canvas: HTMLCanvasElement
-  context: CanvasRenderingContext2D
+  context: CanvasRenderingContext2D | null
   root: SceneNode | null
   frameHandle: number | null
   presentationSize: [number, number]
   dpr: number
+  onFrame?: (ops: Uint8Array) => void
+  softwareRendererActive: boolean
+  enableSoftwareRenderer(): void
 }
 
 interface RenderState {
@@ -63,20 +68,48 @@ interface RenderState {
 const warnedPaintKinds = new Set<string>()
 const warnedNodeTypes = new Set<HostType>()
 
-export function createCanvasContainer(canvas: HTMLCanvasElement): CanvasContainer {
-  const context = canvas.getContext('2d')
-  if (!context) {
-    throw new Error('Failed to acquire 2D context for canvas')
+interface ContainerOptions {
+  onFrame?: (ops: Uint8Array) => void
+  softwareRenderer?: boolean
+}
+
+export function createCanvasContainer(canvas: HTMLCanvasElement, options: ContainerOptions = {}): CanvasContainer {
+  const shouldAttachContext = options.softwareRenderer ?? true
+  let context: CanvasRenderingContext2D | null = null
+  let softwareRendererActive = false
+
+  if (shouldAttachContext) {
+    context = canvas.getContext('2d')
+    if (!context) {
+      throw new Error('Failed to acquire 2D context for canvas')
+    }
+    softwareRendererActive = true
   }
 
-  return {
+  const container: CanvasContainer = {
     canvas,
     context,
     root: null,
     frameHandle: null,
     presentationSize: [canvas.width, canvas.height],
     dpr: window.devicePixelRatio ?? 1,
+    onFrame: options.onFrame,
+    softwareRendererActive,
+    enableSoftwareRenderer: () => {
+      if (container.softwareRendererActive) return
+      if (!container.context) {
+        const ctx = canvas.getContext('2d')
+        if (!ctx) {
+          console.warn('[rvello] Unable to enable software renderer: failed to acquire 2D context')
+          return
+        }
+        container.context = ctx
+      }
+      container.softwareRendererActive = true
+    },
   }
+
+  return container
 }
 
 export function scheduleRender(container: CanvasContainer): void {
@@ -100,25 +133,31 @@ export function sanitizeProps<T extends HostType>(rawProps: HostPropsMap[T]): Ho
     return rawProps
   }
 
-  const clone = { ...(rawProps as Record<string, unknown>) }
-  delete clone.children
-  return clone as HostPropsMap[T]
+  const { children: _children, ...rest } = rawProps as HostPropsMap[T] & { children?: unknown }
+  return rest as HostPropsMap[T]
 }
 
 function renderContainer(container: CanvasContainer): void {
   const { canvas, context: ctx } = container
   const root = container.root
 
-  ctx.save()
-  ctx.setTransform(1, 0, 0, 1, 0, 0)
-  ctx.clearRect(0, 0, canvas.width, canvas.height)
+  const drawSoftware = ctx && container.softwareRendererActive
+
+  if (drawSoftware) {
+    ctx.save()
+    ctx.setTransform(1, 0, 0, 1, 0, 0)
+    ctx.clearRect(0, 0, canvas.width, canvas.height)
+  }
 
   if (!root || root.type !== 'Canvas') {
-    ctx.restore()
+    if (drawSoftware) {
+      ctx!.restore()
+    }
     return
   }
 
-  const props = root.props
+  const canvasNode = root as SceneNode<'Canvas'>
+  const props = canvasNode.props
   const width = props.width
   const height = props.height
   const targetDpr = props.devicePixelRatio ?? window.devicePixelRatio ?? 1
@@ -133,35 +172,49 @@ function renderContainer(container: CanvasContainer): void {
   canvas.style.width = `${width}px`
   canvas.style.height = `${height}px`
 
-  ctx.scale(targetDpr, targetDpr)
-  ctx.imageSmoothingEnabled = props.antialiasing !== 'none'
+  if (drawSoftware) {
+    ctx.scale(targetDpr, targetDpr)
+    ctx.imageSmoothingEnabled = props.antialiasing !== 'none'
 
-  if (props.backgroundColor) {
-    const fillStyle = colorToCss(props.backgroundColor)
-    if (fillStyle) {
-      ctx.fillStyle = fillStyle
-      ctx.fillRect(0, 0, width, height)
+    if (props.backgroundColor) {
+      const fillStyle = colorToCss(props.backgroundColor)
+      if (fillStyle) {
+        ctx.fillStyle = fillStyle
+        ctx.fillRect(0, 0, width, height)
+      }
     }
   }
 
   const initialState: RenderState = { opacity: 1 }
-  for (const child of root.children) {
-    renderNode(ctx, child, initialState)
-  }
+  if (drawSoftware) {
+    for (const child of canvasNode.children) {
+      renderNode(ctx!, child, initialState)
+    }
 
-  ctx.restore()
+    ctx!.restore()
+  }
   container.presentationSize[0] = width
   container.presentationSize[1] = height
   container.dpr = targetDpr
+
+  if (container.onFrame) {
+    const encoded = encodeFrame(container)
+    if (encoded) {
+      container.onFrame(encoded)
+    }
+  }
 }
 
 function renderNode(ctx: CanvasRenderingContext2D, node: SceneNode, state: RenderState): void {
   switch (node.type) {
     case 'Group':
-      renderGroup(ctx, node, state)
+      renderGroup(ctx, node as SceneNode<'Group'>, state)
       break
     case 'Rect':
-      renderRect(ctx, node, state)
+      renderRect(ctx, node as SceneNode<'Rect'>, state)
+      break
+    case 'Path':
+      renderPath(ctx, node as SceneNode<'Path'>, state)
       break
     default:
       if (!warnedNodeTypes.has(node.type)) {
@@ -217,29 +270,41 @@ function renderRect(ctx: CanvasRenderingContext2D, node: SceneNode<'Rect'>, pare
   ctx.restore()
 }
 
-function resolveCornerRadius(radius: RectProps['radius'], width: number, height: number): number {
-  if (!radius) return 0
-  if (typeof radius === 'number') return clampRadius(radius, width, height)
+function renderPath(ctx: CanvasRenderingContext2D, node: SceneNode<'Path'>, parentState: RenderState): void {
+  if (node.props.visible === false) return
 
-  if (Array.isArray(radius)) {
-    const first = radius[0]
-    if (typeof first === 'number') {
-      return clampRadius(first, width, height)
-    }
-    if (Array.isArray(first)) {
-      const candidate = first[0]
-      if (typeof candidate === 'number') {
-        return clampRadius(candidate, width, height)
-      }
-    }
+  ctx.save()
+  applyTransform(ctx, node.props.transform)
+
+  const opacity = parentState.opacity * (node.props.opacity ?? 1)
+  const pathData = node.props.d
+
+  if (!pathData) {
+    ctx.restore()
+    return
   }
 
-  return 0
-}
+  try {
+    const path = new Path2D(pathData)
+    const fillRule = node.props.fillRule === 'evenodd' ? 'evenodd' : 'nonzero'
 
-function clampRadius(radius: number, width: number, height: number): number {
-  const maxRadius = Math.min(Math.abs(width), Math.abs(height)) / 2
-  return Math.max(0, Math.min(radius, maxRadius))
+    const fill = resolvePaint(node.props.fill)
+    if (fill) {
+      ctx.globalAlpha = opacity
+      ctx.fillStyle = fill
+      ctx.fill(path, fillRule)
+    }
+
+    if (node.props.stroke) {
+      ctx.globalAlpha = opacity
+      applyStroke(ctx, node.props.stroke)
+      ctx.stroke(path)
+    }
+  } catch (error) {
+    console.warn('[rvello] Invalid SVG path data:', pathData, error)
+  }
+
+  ctx.restore()
 }
 
 function applyStroke(ctx: CanvasRenderingContext2D, stroke: RectProps['stroke']): void {
@@ -269,7 +334,10 @@ function applyTransform(ctx: CanvasRenderingContext2D, transform?: Mat3): void {
 function resolvePaint(paint?: Paint): string | undefined {
   if (!paint) return undefined
   if (paint.kind === 'solid') {
-    return colorToCss(paint.color)
+    const rgba = paintToRgba(paint)
+    if (rgba) {
+      return rgbaToCss(rgba)
+    }
   }
 
   if (!warnedPaintKinds.has(paint.kind)) {
@@ -277,27 +345,6 @@ function resolvePaint(paint?: Paint): string | undefined {
     console.warn(`[rvello] Paint kind "${paint.kind}" is not yet implemented in the preview renderer.`)
   }
   return undefined
-}
-
-function colorToCss(color: string | RgbaColor | undefined): string | undefined {
-  if (!color) return undefined
-  if (typeof color === 'string') return color
-  const { r, g, b } = normalizeChannelTriplet(color)
-  const alpha = clamp01(color.a ?? 1)
-  return `rgba(${r}, ${g}, ${b}, ${alpha})`
-}
-
-function normalizeChannelTriplet(color: RgbaColor): readonly [number, number, number] {
-  const convert = (value: number) => {
-    if (value <= 1) return Math.round(clamp01(value) * 255)
-    return Math.round(Math.min(255, Math.max(0, value)))
-  }
-  return [convert(color.r), convert(color.g), convert(color.b)]
-}
-
-function clamp01(value: number): number {
-  if (Number.isNaN(value)) return 0
-  return Math.min(1, Math.max(0, value))
 }
 
 function drawRoundedRectPath(

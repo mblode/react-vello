@@ -4,7 +4,9 @@
   "private": true,
   "type": "module",
   "scripts": {
+    "predev": "pnpm -w wasm:build",
     "dev": "vite",
+    "prebuild": "pnpm -w wasm:build",
     "build": "tsc --project tsconfig.json && vite build",
     "preview": "vite preview",
     "lint": "tsc --project tsconfig.json --noEmit",

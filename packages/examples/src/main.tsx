@@ -1,13 +1,14 @@
 import './style.css'
 import { StrictMode, useEffect, useMemo, useState } from 'react'
 import type { Mat3, Vec2 } from '@react-vello/types'
-import { createVelloRoot, type VelloRoot } from '@react-vello/core'
+import { Canvas, Group, Path, Rect, createVelloRoot, type VelloRoot } from '@react-vello/core'
 
 type SupportStatus =
   | { ok: true; adapter: string; description: string; features: string[] }
   | { ok: false; reason: string; hint?: string }
 
 let currentRoot: VelloRoot | null = null
+let loggedFrame = false
 
 async function detectWebGPU(): Promise<SupportStatus> {
   if (!('gpu' in navigator)) {
@@ -27,10 +28,15 @@ async function detectWebGPU(): Promise<SupportStatus> {
     }
   }
 
+  const enrichedAdapter = adapter as GPUAdapter & {
+    name?: string
+    isFallbackAdapter?: boolean
+  }
+
   return {
     ok: true,
-    adapter: adapter.name || 'Unknown GPU',
-    description: adapter.isFallbackAdapter ? 'Fallback adapter' : 'High-performance adapter',
+    adapter: enrichedAdapter.name || 'Unknown GPU',
+    description: enrichedAdapter.isFallbackAdapter ? 'Fallback adapter' : 'High-performance adapter',
     features: Array.from(adapter.features.values()).sort(),
   }
 }
@@ -102,7 +108,14 @@ function startScene() {
   if (!canvas) throw new Error('Missing #rvello-canvas element')
 
   currentRoot?.unmount()
-  currentRoot = createVelloRoot(canvas)
+  currentRoot = createVelloRoot(canvas, {
+    onFrame(ops) {
+      if (!loggedFrame) {
+        console.debug(`[rvello] encoded frame buffer`, ops.byteLength, 'bytes')
+        loggedFrame = true
+      }
+    },
+  })
   currentRoot.render(
     <StrictMode>
       <DemoScene />
@@ -137,6 +150,8 @@ function DemoScene() {
     { label: 'WASM bridge', origin: [460, 80], color: '#facc15' },
   ]
 
+  const starPath = 'M 0,-20 L 5,-6 L 20,-6 L 8,3 L 13,17 L 0,8 L -13,17 L -8,3 L -20,-6 L -5,-6 Z'
+
   return (
     <Canvas
       width={720}
@@ -158,6 +173,13 @@ function DemoScene() {
           <Rect origin={[0, 0]} size={[140, 40]} radius={12} fill={{ kind: 'solid', color: chip.color }} />
         </Group>
       ))}
+      <Group transform={[1, 0, 0, 1, 360, 210]}>
+        <Path
+          d={starPath}
+          fill={{ kind: 'solid', color: '#fbbf24' }}
+          stroke={{ width: 2, paint: { kind: 'solid', color: '#f59e0b' } }}
+        />
+      </Group>
     </Canvas>
   )
 }
@@ -169,9 +191,7 @@ async function main() {
 
   const status = await detectWebGPU()
   statusSlot.innerHTML = renderStatus(status)
-  if (status.ok) {
-    startScene()
-  }
+  startScene()
 }
 
 void main()

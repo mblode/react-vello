@@ -187,4 +187,4 @@ declare global {
   }
 }
 
-export type { CanvasPointerEvent as CanvasEvent, CanvasWheelEvent }
+export type { CanvasPointerEvent as CanvasEvent }

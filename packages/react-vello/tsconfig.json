@@ -4,10 +4,13 @@
     "outDir": "dist",
     "declaration": true,
     "declarationMap": true,
-    "emitDeclarationOnly": false,
-    "noEmit": false,
+    "emitDeclarationOnly": true,
     "composite": true,
-    "rootDir": "src"
+    "rootDir": ".",
+    "allowImportingTsExtensions": false
   },
-  "include": ["src"]
+  "include": ["src"],
+  "references": [
+    { "path": "../react-vello-types/tsconfig.json" }
+  ]
 }

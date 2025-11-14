@@ -11,9 +11,68 @@ import {
   scheduleRender,
   setRootNode,
 } from './runtime'
+import { createWasmRenderer, type WasmRenderer } from './wasmBridge'
+export * from './components'
+
+const supportsWebGPU = typeof navigator !== 'undefined' && 'gpu' in navigator
+
+interface WasmDriverOptions {
+  onFailure?: () => void
+}
+
+class WasmDriver {
+  private renderer: WasmRenderer | null = null
+  private pending: Uint8Array | null = null
+  private readonly onFailure?: () => void
+
+  constructor(canvas: HTMLCanvasElement, options: WasmDriverOptions = {}) {
+    this.onFailure = options.onFailure
+
+    createWasmRenderer(canvas)
+      .then((renderer) => {
+        if (!renderer) {
+          this.handleFailure()
+          return
+        }
+        this.renderer = renderer
+        if (this.pending) {
+          this.renderer.apply(this.pending)
+          this.renderer.render()
+          this.pending = null
+        }
+      })
+      .catch((error) => {
+        console.warn('[rvello] wasm renderer unavailable', error)
+        this.handleFailure()
+      })
+  }
+
+  private handleFailure() {
+    this.renderer = null
+    this.pending = null
+    this.onFailure?.()
+  }
+
+  enqueue(ops: Uint8Array) {
+    if (!this.renderer) {
+      this.pending = ops.slice()
+      return
+    }
+
+    const copy = ops.slice()
+    try {
+      this.renderer.apply(copy)
+      this.renderer.render()
+    } catch (error) {
+      console.error('[rvello] wasm render failed', error)
+      this.handleFailure()
+    }
+  }
+}
 
 type Instance = SceneNode
 type TextInstance = string
+type SuspenseInstance = never
 type HydratableInstance = never
 type PublicInstance = SceneNode
 type HostContext = null
@@ -24,31 +83,14 @@ type NoTimeout = number
 
 const NoTimeoutValue: NoTimeout = -1
 
-const hostConfig: Reconciler.HostConfig<
-  HostType,
-  HostProps,
-  CanvasContainer,
-  Instance,
-  TextInstance,
-  HydratableInstance,
-  PublicInstance,
-  HostContext,
-  HostContext,
-  ChildSet,
-  ChildSet,
-  UpdatePayload,
-  ChildSet,
-  TimeoutHandle,
-  NoTimeout
-> = {
-  now: Date.now,
-  getRootHostContext() {
+const hostConfig = {
+  getRootHostContext(): HostContext {
     return null
   },
-  getChildHostContext() {
+  getChildHostContext(): HostContext {
     return null
   },
-  getPublicInstance(instance) {
+  getPublicInstance(instance: Instance): PublicInstance {
     return instance
   },
   supportsMutation: true,
@@ -57,27 +99,31 @@ const hostConfig: Reconciler.HostConfig<
   shouldSetTextContent() {
     return false
   },
-  createInstance(type, props) {
+  createInstance(type: HostType, props: HostProps): Instance {
     return {
       type,
       props: sanitizeProps(props),
       children: [],
     }
   },
-  createTextInstance(text) {
+  createTextInstance(text: string) {
     console.warn('[rvello] Text nodes are not supported; wrap strings in <Text>.')
     return text
   },
-  appendInitialChild(parent, child) {
+  appendInitialChild(parent: Instance, child: Instance | TextInstance) {
+    if (typeof child === 'string') return
     parent.children.push(child)
   },
-  appendChild(parent, child) {
+  appendChild(parent: Instance, child: Instance | TextInstance) {
+    if (typeof child === 'string') return
     parent.children.push(child)
   },
-  appendChildToContainer(container, child) {
+  appendChildToContainer(container: CanvasContainer, child: Instance | TextInstance) {
+    if (typeof child === 'string') return
     setRootNode(container, child)
   },
-  insertBefore(parent, child, beforeChild) {
+  insertBefore(parent: Instance, child: Instance | TextInstance, beforeChild: Instance | TextInstance) {
+    if (typeof child === 'string' || typeof beforeChild === 'string') return
     const index = parent.children.indexOf(beforeChild)
     if (index === -1) {
       parent.children.push(child)
@@ -85,16 +131,19 @@ const hostConfig: Reconciler.HostConfig<
       parent.children.splice(index, 0, child)
     }
   },
-  insertInContainerBefore(container, child) {
+  insertInContainerBefore(container: CanvasContainer, child: Instance | TextInstance) {
+    if (typeof child === 'string') return
     setRootNode(container, child)
   },
-  removeChild(parent, child) {
+  removeChild(parent: Instance, child: Instance | TextInstance) {
+    if (typeof child === 'string') return
     const index = parent.children.indexOf(child)
     if (index >= 0) {
       parent.children.splice(index, 1)
     }
   },
-  removeChildFromContainer(container, child) {
+  removeChildFromContainer(container: CanvasContainer, child: Instance | TextInstance) {
+    if (typeof child === 'string') return
     if (container.root === child) {
       setRootNode(container, null)
     }
@@ -102,10 +151,10 @@ const hostConfig: Reconciler.HostConfig<
   finalizeInitialChildren() {
     return false
   },
-  prepareUpdate() {
+  prepareUpdate(): UpdatePayload {
     return true
   },
-  commitUpdate(instance, payload, type, oldProps, newProps) {
+  commitUpdate(instance: Instance, _payload: UpdatePayload, _type: HostType, _oldProps: HostProps, newProps: HostProps) {
     instance.props = sanitizeProps(newProps)
   },
   commitTextUpdate() {
@@ -114,16 +163,18 @@ const hostConfig: Reconciler.HostConfig<
   prepareForCommit() {
     return null
   },
-  resetAfterCommit(container) {
+  resetAfterCommit(container: CanvasContainer) {
     scheduleRender(container)
   },
-  clearContainer(container) {
+  clearContainer(container: CanvasContainer) {
     container.root = null
     const { context, canvas } = container
-    context.save()
-    context.setTransform(1, 0, 0, 1, 0, 0)
-    context.clearRect(0, 0, canvas.width, canvas.height)
-    context.restore()
+    if (context) {
+      context.save()
+      context.setTransform(1, 0, 0, 1, 0, 0)
+      context.clearRect(0, 0, canvas.width, canvas.height)
+      context.restore()
+    }
   },
   detachDeletedInstance() {
     // no-op
@@ -140,17 +191,32 @@ const hostConfig: Reconciler.HostConfig<
   afterActiveInstanceBlur() {
     // no-op
   },
-  scheduleMicrotask(task) {
+  scheduleMicrotask(task: () => void) {
     queueMicrotask(task)
   },
   supportsMicrotasks: true,
   isPrimaryRenderer: true,
-}
+} as unknown as Reconciler.HostConfig<
+  HostType,
+  HostProps,
+  CanvasContainer,
+  Instance,
+  TextInstance,
+  SuspenseInstance,
+  HydratableInstance,
+  PublicInstance,
+  HostContext,
+  UpdatePayload,
+  ChildSet,
+  TimeoutHandle,
+  NoTimeout
+>
 
 const reconciler = Reconciler(hostConfig)
 
 export interface RendererOptions {
   onReady?: (context: CanvasContext) => void
+  onFrame?: (ops: Uint8Array) => void
 }
 
 export interface VelloRoot {
@@ -160,18 +226,36 @@ export interface VelloRoot {
 }
 
 export function createVelloRoot(canvas: HTMLCanvasElement, options: RendererOptions = {}): VelloRoot {
-  const container = createCanvasContainer(canvas)
+  const useWebGPU = supportsWebGPU
+  let wasmDriver: WasmDriver | null = null
+  const container = createCanvasContainer(canvas, {
+    onFrame(ops) {
+      options.onFrame?.(ops)
+      wasmDriver?.enqueue(ops)
+    },
+    softwareRenderer: !useWebGPU,
+  })
+
+  if (useWebGPU) {
+    wasmDriver = new WasmDriver(canvas, {
+      onFailure: () => {
+        container.enableSoftwareRenderer()
+        scheduleRender(container)
+      },
+    })
+  }
+
   const reconRoot = reconciler.createContainer(
     container,
     0,
     null,
     false,
     null,
-    false,
     '',
     (error) => {
       console.error('[rvello] recoverable error', error)
     },
+    null,
   )
 
   const context: CanvasContext = {
