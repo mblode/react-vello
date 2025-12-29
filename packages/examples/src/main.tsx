@@ -799,7 +799,7 @@ function ReactVelloStressTest({
         {Array.from({ length: particleCount }).map((_, index) => (
           <Rect
             key={`particle-${index}`}
-            ref={(node) => {
+            ref={(node: NodeRef | null) => {
               nodeRefs.current[index] = node as MutableRectNode | null;
             }}
             origin={[0, 0]}
