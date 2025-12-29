@@ -1,5 +1,5 @@
 {
-  "name": "@react-wgpu/core",
+  "name": "@react-vello/core",
   "version": "0.0.1",
   "private": true,
   "type": "module",
@@ -19,7 +19,7 @@
     "test": "echo 'renderer not implemented yet'"
   },
   "dependencies": {
-    "@react-wgpu/types": "workspace:*",
+    "@react-vello/types": "workspace:*",
     "react-reconciler": "0.29.0"
   },
   "peerDependencies": {

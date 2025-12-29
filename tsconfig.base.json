@@ -17,8 +17,8 @@
     "esModuleInterop": true,
     "types": ["@webgpu/types"],
     "paths": {
-      "@react-wgpu/types": ["packages/react-wgpu-types/src/index.ts"],
-      "@react-wgpu/core": ["packages/react-wgpu/src/index.ts"]
+      "@react-vello/types": ["packages/react-vello-types/src/index.ts"],
+      "@react-vello/core": ["packages/react-vello/src/index.ts"]
     }
   }
 }

@@ -11,6 +11,6 @@
   },
   "include": ["src"],
   "references": [
-    { "path": "../react-wgpu-types/tsconfig.json" }
+    { "path": "../react-vello-types/tsconfig.json" }
   ]
 }

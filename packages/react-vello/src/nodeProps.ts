@@ -1,4 +1,4 @@
-import type { ImageProps, Mat3, NodeProps, RectProps, TextProps, Vec2 } from '@react-wgpu/types'
+import type { ImageProps, Mat3, NodeProps, RectProps, TextProps, Vec2 } from '@react-vello/types'
 import { IDENTITY_MATRIX, multiplyTransforms } from './mat3'
 
 const ZERO_VEC2: Vec2 = [0, 0]

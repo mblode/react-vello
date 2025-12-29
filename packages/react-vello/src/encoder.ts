@@ -1,4 +1,4 @@
-import type { CanvasProps, Mat3, Paint } from '@react-wgpu/types'
+import type { CanvasProps, Mat3, Paint } from '@react-vello/types'
 import type { CanvasContainer, SceneNode } from './runtime'
 import { paintToRgba, type NormalizedRgba } from './color'
 import { resolveCornerRadius } from './geometry'

@@ -1,4 +1,4 @@
-import type { RectProps, Vec2 } from '@react-wgpu/types'
+import type { RectProps, Vec2 } from '@react-vello/types'
 
 export function resolveCornerRadius(radius: RectProps['radius'], width: number, height: number): number {
   if (!radius) return 0

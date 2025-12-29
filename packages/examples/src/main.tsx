@@ -9,7 +9,7 @@ import {
   Text,
   createVelloRoot,
   type VelloRoot,
-} from "@react-wgpu/core";
+} from "@react-vello/core";
 
 type SupportStatus =
   | { ok: true }

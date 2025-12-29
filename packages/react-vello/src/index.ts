@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react'
 import Reconciler from 'react-reconciler'
-import type { CanvasContext } from '@react-wgpu/types'
+import type { CanvasContext } from '@react-vello/types'
 import {
   type CanvasContainer,
   type HostProps,
