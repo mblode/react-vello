@@ -12,7 +12,10 @@
     "build": "turbo build",
     "test": "turbo test",
     "lint": "turbo lint",
+    "lint:biome": "biome lint .",
     "typecheck": "turbo typecheck",
+    "format": "biome format --write .",
+    "format:check": "biome format .",
     "changeset": "changeset",
     "changeset:version": "changeset version",
     "release": "changeset publish",
@@ -21,6 +24,7 @@
     "wasm:watch": "wasm-pack build crates/rvello --out-dir pkg --target web --dev --watch"
   },
   "devDependencies": {
+    "@biomejs/biome": "^2.3.10",
     "@changesets/cli": "^2.29.8",
     "@webgpu/types": "0.1.39",
     "turbo": "^2.1.3",

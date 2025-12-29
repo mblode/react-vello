@@ -4,6 +4,21 @@
 
 **React renderer for Vello (2D graphics with wgpu)**
 
+<p align="center">
+  <a href="https://www.npmjs.com/package/react-vello">
+    <img src="https://img.shields.io/npm/v/react-vello?style=flat&colorA=000000&colorB=000000" />
+  </a>
+  <a href="https://github.com/mblode/react-vello">
+    <img src="https://img.shields.io/github/stars/mblode/react-vello?style=flat&colorA=000000&colorB=000000" />
+  </a>
+  <a href="https://github.com/mblode/react-vello/blob/main/LICENSE.md">
+    <img src="https://img.shields.io/github/license/mblode/react-vello?style=flat&colorA=000000&colorB=000000" />
+  </a>
+  <a href="https://www.npmjs.com/package/react-vello">
+    <img src="https://img.shields.io/npm/dm/react-vello?style=flat&colorA=000000&colorB=000000" />
+  </a>
+</p>
+
 </div>
 
 Inspired by [react-three-fiber](https://github.com/pmndrs/react-three-fiber) and [Konva](https://github.com/konvajs/konva).
