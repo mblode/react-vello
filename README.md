@@ -1,7 +1,3 @@
-<!--
-Simple repo-level readme for react-vello.
--->
-
 <div align="center">
 
 # react-vello
@@ -13,7 +9,12 @@ Simple repo-level readme for react-vello.
 </div>
 
 react-vello is a Vite + TypeScript workspace for experimenting with WebGPU pipelines in React.
-It uses `typegpu` alongside a small Rust/WASM bridge to explore GPU-first rendering paths.
+It builds on Vello with `typegpu` and a small Rust/WASM bridge.
+
+## Resources
+
+- Vello: https://github.com/linebender/vello
+- typegpu: https://github.com/un-ts/typegpu
 
 ## Quickstart
 
@@ -24,7 +25,7 @@ pnpm dev
 
 ## Development
 
-- `pnpm dev` - run all dev tasks (Vite app + TS watchers).
+- `pnpm dev` - run the Vite app with TS watching.
 - `pnpm build` - typecheck and build the workspace.
 - `pnpm --filter @react-vello/examples preview` - preview the production bundle.
 
@@ -37,7 +38,7 @@ pnpm dev
 
 ## WebGPU support
 
-WebGPU currently works best in Chromium-based browsers with WebGPU enabled.
+WebGPU works best in Chromium-based browsers with WebGPU enabled.
 
 ## License
 

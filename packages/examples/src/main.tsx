@@ -1,12 +1,17 @@
 import "./style.css";
-import { StrictMode, useCallback, useEffect, useRef, useState } from "react";
+import {
+  StrictMode,
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+} from "react";
 import { createRoot } from "react-dom/client";
 import {
   Canvas,
   Group,
   Path,
   Rect,
-  Text,
   createVelloRoot,
   type VelloRoot,
 } from "@react-vello/core";
@@ -15,14 +20,23 @@ type SupportStatus =
   | { ok: true }
   | { ok: false; reason: string; hint?: string };
 
-type RendererMode = "webgpu" | "unavailable" | "loading";
+type PointerState = {
+  x: number;
+  y: number;
+  targetX: number;
+  targetY: number;
+  prevX: number;
+  prevY: number;
+  down: boolean;
+  speed: number;
+};
 
-type StatusState = "ok" | "error" | "loading";
-
-type HudState = {
-  status: StatusState;
-  statusLabel: string;
-  statsLabel: string;
+type Burst = {
+  x: number;
+  y: number;
+  started: number;
+  duration: number;
+  color: string;
 };
 
 async function detectWebGPU(): Promise<SupportStatus> {
@@ -109,46 +123,32 @@ function useViewportSize() {
   return size;
 }
 
+const BURST_PALETTE = ["#22d3ee", "#38bdf8", "#a78bfa", "#f97316"];
+
+function lerp(start: number, end: number, t: number): number {
+  return start + (end - start) * t;
+}
+
+function buildCirclePath(cx: number, cy: number, radius: number): string {
+  const r = Math.max(0, radius);
+  const startX = cx + r;
+  const startY = cy;
+  return `M ${startX} ${startY} A ${r} ${r} 0 1 0 ${cx - r} ${cy} A ${r} ${r} 0 1 0 ${startX} ${startY}`;
+}
+
 function App() {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const velloRootRef = useRef<VelloRoot | null>(null);
-  const frameTracker = useRef({ lastTime: 0, frames: 0 });
-  const loggedFrame = useRef(false);
 
   const [status, setStatus] = useState<SupportStatus | null>(null);
-  const [rendererMode, setRendererMode] = useState<RendererMode>("loading");
-  const [fps, setFps] = useState(0);
 
   const size = useViewportSize();
-
-  const handleFrame = useCallback((ops: Uint8Array) => {
-    if (!loggedFrame.current) {
-      console.debug("[rvello] encoded frame buffer", ops.byteLength, "bytes");
-      loggedFrame.current = true;
-    }
-
-    const now = performance.now();
-    const tracker = frameTracker.current;
-    if (tracker.lastTime === 0) {
-      tracker.lastTime = now;
-    }
-    tracker.frames += 1;
-
-    const elapsed = now - tracker.lastTime;
-    if (elapsed >= 500) {
-      const nextFps = Math.round((tracker.frames * 1000) / elapsed);
-      setFps(nextFps);
-      tracker.frames = 0;
-      tracker.lastTime = now;
-    }
-  }, []);
 
   useEffect(() => {
     let active = true;
     detectWebGPU().then((result) => {
       if (!active) return;
       setStatus(result);
-      setRendererMode(result.ok ? "loading" : "unavailable");
     });
     return () => {
       active = false;
@@ -160,20 +160,12 @@ function App() {
     if (!status?.ok || !canvas) {
       velloRootRef.current?.unmount();
       velloRootRef.current = null;
-      setFps(0);
       return;
     }
 
-    setRendererMode("loading");
-
     const root = createVelloRoot(canvas, {
-      onFrame: handleFrame,
-      onReady: () => {
-        setRendererMode("webgpu");
-      },
       onError: (error) => {
         console.error("[rvello] WebGPU renderer error", error);
-        setRendererMode("unavailable");
       },
     });
 
@@ -185,40 +177,13 @@ function App() {
         velloRootRef.current = null;
       }
     };
-  }, [status?.ok, handleFrame]);
-
-  const statusState: StatusState = status
-    ? status.ok
-      ? "ok"
-      : "error"
-    : "loading";
-  const statusLabel = status
-    ? status.ok
-      ? "WebGPU ready"
-      : "WebGPU required"
-    : "Checking WebGPU";
-  const fpsLabel = fps > 0 ? fps.toString() : "--";
-  const rendererLabel =
-    rendererMode === "webgpu"
-      ? "WebGPU"
-      : rendererMode === "loading"
-        ? "Initializing"
-        : "Unavailable";
-  const statsLabel = `FPS ${fpsLabel} \u00b7 ${rendererLabel} \u00b7 ${size.width}x${size.height}`;
-  const hud: HudState = { status: statusState, statusLabel, statsLabel };
+  }, [status?.ok]);
 
   useEffect(() => {
     const root = velloRootRef.current;
     if (!root || !status?.ok || size.width === 0 || size.height === 0) return;
-    root.render(<DemoScene width={size.width} height={size.height} hud={hud} />);
-  }, [
-    status?.ok,
-    size.width,
-    size.height,
-    hud.status,
-    hud.statusLabel,
-    hud.statsLabel,
-  ]);
+    root.render(<DemoScene width={size.width} height={size.height} />);
+  }, [status?.ok, size.width, size.height]);
 
   return (
     <div className="app">
@@ -234,17 +199,106 @@ function App() {
 function DemoScene({
   width,
   height,
-  hud,
 }: {
   width: number;
   height: number;
-  hud: HudState;
 }) {
   const [tick, setTick] = useState(0);
+  const pointerRef = useRef<PointerState>({
+    x: width * 0.5,
+    y: height * 0.5,
+    targetX: width * 0.5,
+    targetY: height * 0.5,
+    prevX: width * 0.5,
+    prevY: height * 0.5,
+    down: false,
+    speed: 0,
+  });
+  const burstsRef = useRef<Burst[]>([]);
+
+  const spawnBurst = useCallback((x: number, y: number) => {
+    const now = performance.now();
+    const paletteIndex = Math.floor(now / 120) % BURST_PALETTE.length;
+    const color = BURST_PALETTE[paletteIndex];
+    const bursts = burstsRef.current;
+    bursts.push({ x, y, started: now, duration: 900, color });
+    if (bursts.length > 8) {
+      bursts.shift();
+    }
+  }, []);
+
+  useEffect(() => {
+    const pointer = pointerRef.current;
+    pointer.x = width * 0.5;
+    pointer.y = height * 0.5;
+    pointer.targetX = pointer.x;
+    pointer.targetY = pointer.y;
+    pointer.prevX = pointer.x;
+    pointer.prevY = pointer.y;
+  }, [width, height]);
+
+  useEffect(() => {
+    const handlePointerMove = (event: PointerEvent) => {
+      const x = clamp(event.clientX, 0, width);
+      const y = clamp(event.clientY, 0, height);
+      const pointer = pointerRef.current;
+      pointer.targetX = x;
+      pointer.targetY = y;
+    };
+
+    const handlePointerDown = (event: PointerEvent) => {
+      const x = clamp(event.clientX, 0, width);
+      const y = clamp(event.clientY, 0, height);
+      const pointer = pointerRef.current;
+      pointer.down = true;
+      pointer.targetX = x;
+      pointer.targetY = y;
+      spawnBurst(x, y);
+    };
+
+    const handlePointerUp = () => {
+      pointerRef.current.down = false;
+    };
+
+    window.addEventListener("pointermove", handlePointerMove);
+    window.addEventListener("pointerdown", handlePointerDown);
+    window.addEventListener("pointerup", handlePointerUp);
+    window.addEventListener("blur", handlePointerUp);
+
+    return () => {
+      window.removeEventListener("pointermove", handlePointerMove);
+      window.removeEventListener("pointerdown", handlePointerDown);
+      window.removeEventListener("pointerup", handlePointerUp);
+      window.removeEventListener("blur", handlePointerUp);
+    };
+  }, [width, height, spawnBurst]);
 
   useEffect(() => {
     let raf: number;
+    let lastTime = performance.now();
     const loop = () => {
+      const now = performance.now();
+      const dt = Math.min(32, now - lastTime);
+      lastTime = now;
+
+      const pointer = pointerRef.current;
+      const ease = pointer.down ? 0.24 : 0.14;
+      pointer.x += (pointer.targetX - pointer.x) * ease;
+      pointer.y += (pointer.targetY - pointer.y) * ease;
+
+      const dx = pointer.x - pointer.prevX;
+      const dy = pointer.y - pointer.prevY;
+      const move = Math.hypot(dx, dy);
+      const targetSpeed = clamp(move / 20, 0, 1);
+      pointer.speed = lerp(pointer.speed, targetSpeed, 0.2);
+      pointer.prevX = pointer.x;
+      pointer.prevY = pointer.y;
+
+      const bursts = burstsRef.current;
+      burstsRef.current = bursts.filter(
+        (burst) => now - burst.started < burst.duration,
+      );
+
       setTick((t) => (t + 1) % 3600);
       raf = requestAnimationFrame(loop);
     };
@@ -253,96 +307,101 @@ function DemoScene({
   }, []);
 
   const t = tick * 0.02;
+  const now = performance.now();
+  const pointer = pointerRef.current;
   const pulse = (Math.sin(t) + 1) / 2;
   const base = Math.min(width, height);
-  const padding = clamp(Math.round(base * 0.06), 20, 64);
-  const gap = clamp(Math.round(base * 0.035), 12, 28);
-  const columns = clamp(Math.floor(width / 260), 2, 7);
-  const rows = clamp(Math.floor(height / 200), 2, 6);
-  const gridWidth = Math.max(0, width - padding * 2);
-  const gridHeight = Math.max(0, height - padding * 2);
-  const cellWidth = Math.max(0, (gridWidth - gap * (columns - 1)) / columns);
-  const cellHeight = Math.max(0, (gridHeight - gap * (rows - 1)) / rows);
-  const waveHeight = clamp(Math.round(height * 0.18), 80, 180);
-  const waveAmplitude = Math.min(waveHeight * 0.3, 32) + pulse * 6;
-  const wavePath = buildWavePath(gridWidth, waveHeight, waveAmplitude, 0);
-  const wavePathSoft = buildWavePath(gridWidth, waveHeight, waveAmplitude * 0.55, 0);
-  const waveY = padding + gridHeight * 0.58;
-  const nodeCount = clamp(Math.round(width / 180), 4, 12);
-  const nodeGap = nodeCount > 1 ? gridWidth / (nodeCount - 1) : 0;
-  const activeColumn = Math.round(((Math.sin(t * 0.4) + 1) / 2) * (columns - 1));
-  const activeRow = Math.round(((Math.cos(t * 0.35) + 1) / 2) * (rows - 1));
-  const hudPanelWidth = clamp(Math.round(gridWidth * 0.28), 220, 360);
-  const hudPanelHeight = 64;
-  const hudStatusColor =
-    hud.status === "ok"
-      ? "#22c55e"
-      : hud.status === "loading"
-        ? "#38bdf8"
-        : "#f97316";
-  const hudLabel = hud.statusLabel.toUpperCase();
+  const padding = clamp(Math.round(base * 0.08), 24, 72);
+  const contentWidth = Math.max(0, width - padding * 2);
+  const pointerBlend = clamp(pointer.speed + (pointer.down ? 0.55 : 0), 0, 1);
+  const pointerBiasX = (pointer.x - width * 0.5) / Math.max(1, width);
+  const pointerBiasY = (pointer.y - height * 0.5) / Math.max(1, height);
+  const waveHeight = clamp(Math.round(height * 0.22), 80, 220);
+  const waveAmplitude =
+    Math.min(waveHeight * 0.34, 42) + pulse * 12 + pointerBlend * 22;
+  const waveOffset =
+    Math.sin(t * 0.6 + pointerBiasX * 1.4) * 10 + pointerBiasX * 22;
+  const wavePath = buildWavePath(
+    contentWidth,
+    waveHeight,
+    waveAmplitude,
+    0,
+    waveOffset,
+  );
+  const wavePathSoft = buildWavePath(
+    contentWidth,
+    waveHeight,
+    waveAmplitude * 0.55,
+    0,
+    waveOffset * 0.6,
+  );
+  const waveY = clamp(
+    padding + height * 0.5 + pointerBiasY * waveHeight * 0.35,
+    padding + waveHeight * 0.25,
+    height - padding - waveHeight * 0.25,
+  );
+  const nodeCount = clamp(Math.round(contentWidth / 180), 4, 9);
+  const nodeGap = nodeCount > 1 ? contentWidth / (nodeCount - 1) : 0;
 
-  const cellNodes: JSX.Element[] = [];
-  for (let row = 0; row < rows; row += 1) {
-    for (let col = 0; col < columns; col += 1) {
-      const x = padding + col * (cellWidth + gap);
-      const y = padding + row * (cellHeight + gap);
-      const tone = (row + col) % 3;
-      const isActive = row === activeRow || col === activeColumn;
-      const headline = cellWidth * (0.45 + tone * 0.12);
-      const subline = headline * 0.6;
-      const chip = isActive ? "#38bdf8" : "#1e293b";
-      const accent = isActive ? "#22d3ee" : "#1f2937";
-      const footerWidth = cellWidth * (isActive ? 0.5 : 0.32);
-      cellNodes.push(
-        <Group key={`cell-${row}-${col}`} transform={[1, 0, 0, 1, x, y]}>
-          <Rect
-            origin={[0, 0]}
-            size={[cellWidth, cellHeight]}
-            radius={16}
-            fill={{ kind: "solid", color: "#0f172a" }}
-            opacity={0.78}
-          />
-          <Rect
-            origin={[16, 16]}
-            size={[headline, 8]}
-            radius={4}
-            fill={{ kind: "solid", color: "#1f2937" }}
-            opacity={0.6}
-          />
-          <Rect
-            origin={[16, 32]}
-            size={[subline, 6]}
-            radius={3}
-            fill={{ kind: "solid", color: "#1f2937" }}
-            opacity={0.4}
-          />
-          <Rect
-            origin={[16, Math.max(16, cellHeight - 20)]}
-            size={[footerWidth, 8]}
-            radius={4}
-            fill={{ kind: "solid", color: accent }}
-            opacity={isActive ? 0.9 : 0.35}
-          />
-          <Rect
-            origin={[Math.max(8, cellWidth - 22), 16]}
-            size={[8, 8]}
-            radius={4}
-            fill={{ kind: "solid", color: chip }}
-            opacity={isActive ? 0.9 : 0.5}
-          />
-        </Group>,
-      );
-    }
-  }
+  const burstNodes = burstsRef.current.map((burst, index) => {
+    const progress = clamp((now - burst.started) / burst.duration, 0, 1);
+    const radius = lerp(12, 150, progress);
+    const opacity = (1 - progress) * 0.5;
+    return (
+      <Path
+        key={`burst-${index}-${burst.started}`}
+        d={buildCirclePath(burst.x, burst.y, radius)}
+        stroke={{
+          width: 2.5,
+          paint: { kind: "solid", color: burst.color },
+          cap: "round",
+        }}
+        opacity={opacity}
+      />
+    );
+  });
+
+  const haloSize = 100 + pointerBlend * 160;
+  const haloNode = (
+    <Rect
+      origin={[pointer.x - haloSize / 2, pointer.y - haloSize / 2]}
+      size={[haloSize, haloSize]}
+      radius={haloSize / 2}
+      fill={{ kind: "solid", color: "#38bdf8" }}
+      opacity={0.08 + pointerBlend * 0.12}
+    />
+  );
+  const ringNode = (
+    <Path
+      d={buildCirclePath(pointer.x, pointer.y, 32 + pointerBlend * 48)}
+      stroke={{
+        width: 2,
+        paint: { kind: "solid", color: "#38bdf8" },
+        cap: "round",
+      }}
+      opacity={0.2 + pointerBlend * 0.5}
+    />
+  );
+  const coreNode = (
+    <Rect
+      origin={[pointer.x - 3, pointer.y - 3]}
+      size={[6, 6]}
+      radius={3}
+      fill={{ kind: "solid", color: "#e2e8f0" }}
+      opacity={0.8}
+    />
+  );
 
   const nodeNodes: JSX.Element[] = [];
   for (let i = 0; i < nodeCount; i += 1) {
     const x = padding + i * nodeGap;
-    const phase = t * 0.45 + i * 0.6;
-    const y = waveY + Math.sin(phase) * (waveAmplitude * 0.6);
-    const size = i % 3 === 0 ? 8 : 6;
-    const color = i % 3 === 0 ? "#38bdf8" : "#22d3ee";
+    const phase = t * (0.6 + pointerBlend * 0.45) + i * 0.7;
+    const y =
+      waveY +
+      Math.sin(phase) * (waveAmplitude * (0.5 + pointerBlend * 0.25));
+    const size = i % 3 === 0 ? 9 : 6;
+    const color = i % 2 === 0 ? "#38bdf8" : "#22d3ee";
+    const glow = 0.4 + 0.6 * Math.sin(phase + t);
     nodeNodes.push(
       <Rect
         key={`node-${i}`}
@@ -350,32 +409,27 @@ function DemoScene({
         size={[size, size]}
         radius={size / 2}
         fill={{ kind: "solid", color }}
-        opacity={0.9}
+        opacity={0.55 + glow * 0.35}
       />,
     );
   }
 
   return (
-    <Canvas
-      width={width}
-      height={height}
-      backgroundColor="#0b1120"
-    >
+    <Canvas width={width} height={height} backgroundColor="#0b1120">
       <Rect
-        origin={[-gridWidth * 0.2, -gridHeight * 0.15]}
-        size={[gridWidth * 0.7, gridWidth * 0.7]}
-        radius={gridWidth * 0.35}
+        origin={[-contentWidth * 0.2, -contentWidth * 0.15]}
+        size={[contentWidth * 0.7, contentWidth * 0.7]}
+        radius={contentWidth * 0.35}
         fill={{ kind: "solid", color: "#38bdf8" }}
         opacity={0.08}
       />
       <Rect
-        origin={[width - gridWidth * 0.55, height - gridWidth * 0.45]}
-        size={[gridWidth * 0.6, gridWidth * 0.6]}
-        radius={gridWidth * 0.3}
+        origin={[width - contentWidth * 0.55, height - contentWidth * 0.45]}
+        size={[contentWidth * 0.6, contentWidth * 0.6]}
+        radius={contentWidth * 0.3}
         fill={{ kind: "solid", color: "#a78bfa" }}
         opacity={0.08}
       />
-      {cellNodes}
       <Group transform={[1, 0, 0, 1, padding, waveY - waveHeight / 2]}>
         <Path
           d={wavePathSoft}
@@ -384,8 +438,10 @@ function DemoScene({
             paint: { kind: "solid", color: "#22d3ee" },
             cap: "round",
           }}
-          opacity={0.5}
+          opacity={0.4}
         />
+      </Group>
+      <Group transform={[1, 0, 0, 1, padding, waveY - waveHeight / 2]}>
         <Path
           d={wavePath}
           stroke={{
@@ -397,35 +453,10 @@ function DemoScene({
         />
       </Group>
       {nodeNodes}
-      <Group transform={[1, 0, 0, 1, padding, padding]}>
-        <Rect
-          origin={[0, 0]}
-          size={[hudPanelWidth, hudPanelHeight]}
-          radius={12}
-          fill={{ kind: "solid", color: "#0f172a" }}
-          opacity={0.82}
-        />
-        <Rect
-          origin={[14, 14]}
-          size={[8, 8]}
-          radius={4}
-          fill={{ kind: "solid", color: hudStatusColor }}
-          opacity={0.9}
-        />
-        <Text
-          text={hudLabel}
-          origin={[28, 8]}
-          font={{ family: "Space Grotesk", size: 12, weight: 600, lineHeight: 16 }}
-          fill={{ kind: "solid", color: "#e2e8f0" }}
-        />
-        <Text
-          text={hud.statsLabel}
-          origin={[28, 30]}
-          maxWidth={hudPanelWidth - 36}
-          font={{ family: "Space Grotesk", size: 11, weight: 500, lineHeight: 14 }}
-          fill={{ kind: "solid", color: "#94a3b8" }}
-        />
-      </Group>
+      {haloNode}
+      {burstNodes}
+      {ringNode}
+      {coreNode}
     </Canvas>
   );
 }
@@ -435,8 +466,9 @@ function buildWavePath(
   height: number,
   amplitude: number,
   inset: number,
+  offset: number,
 ): string {
-  const midY = height / 2;
+  const midY = height / 2 + offset;
   const startX = inset;
   const endX = width - inset;
   const span = endX - startX;

@@ -1,0 +1,20 @@
+{
+  "name": "rvello",
+  "type": "module",
+  "collaborators": [
+    "React Vello <dev@example.com>"
+  ],
+  "description": "WASM bindings for the React + Vello renderer",
+  "version": "0.0.1",
+  "license": "MIT",
+  "files": [
+    "rvello_bg.wasm",
+    "rvello.js",
+    "rvello.d.ts"
+  ],
+  "main": "rvello.js",
+  "types": "rvello.d.ts",
+  "sideEffects": [
+    "./snippets/*"
+  ]
+}
