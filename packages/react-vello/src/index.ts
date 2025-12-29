@@ -1,5 +1,6 @@
-import type { ReactNode } from 'react'
+import { createContext, type ReactNode } from 'react'
 import Reconciler from 'react-reconciler'
+import { DefaultEventPriority, LegacyRoot, NoEventPriority } from 'react-reconciler/constants'
 import type { CanvasContext } from './types'
 import {
   type CanvasContainer,
@@ -80,14 +81,18 @@ type Instance = SceneNode
 type TextInstance = string
 type SuspenseInstance = never
 type HydratableInstance = never
+type FormInstance = never
 type PublicInstance = SceneNode
 type HostContext = null
-type UpdatePayload = true
 type ChildSet = never
 type TimeoutHandle = number
 type NoTimeout = number
+type TransitionStatus = null
 
 const NoTimeoutValue: NoTimeout = -1
+const NotPendingTransition: TransitionStatus = null
+const HostTransitionContext = createContext<TransitionStatus>(NotPendingTransition)
+let currentUpdatePriority = NoEventPriority
 
 const layoutPropKeys = [
   'transform',
@@ -135,14 +140,14 @@ function didLayoutPropsChange(prevProps: HostProps, nextProps: HostProps): boole
 }
 
 const hostConfig = {
-  getRootHostContext(): HostContext {
+  getRootHostContext(_rootContainer: CanvasContainer): HostContext {
     return null
   },
-  getChildHostContext(): HostContext {
+  getChildHostContext(_parentHostContext: HostContext, _type: HostType, _rootContainer: CanvasContainer): HostContext {
     return null
   },
-  getPublicInstance(instance: Instance): PublicInstance {
-    return instance
+  getPublicInstance(instance: Instance | TextInstance): PublicInstance {
+    return instance as PublicInstance
   },
   supportsMutation: true,
   supportsPersistence: false,
@@ -151,10 +156,21 @@ const hostConfig = {
     if (type !== 'Text') return false
     return hasTextChildren(props.children)
   },
-  createInstance(type: HostType, props: HostProps): Instance {
+  createInstance(
+    type: HostType,
+    props: HostProps,
+    _rootContainer: CanvasContainer,
+    _hostContext: HostContext,
+    _internalHandle: unknown,
+  ): Instance {
     return createSceneNode(type, sanitizeProps(type, props))
   },
-  createTextInstance(text: string) {
+  createTextInstance(
+    text: string,
+    _rootContainer: CanvasContainer,
+    _hostContext: HostContext,
+    _internalHandle: unknown,
+  ) {
     console.warn('[rvello] Text nodes are not supported; wrap strings in <Text>.')
     return text
   },
@@ -182,7 +198,11 @@ const hostConfig = {
     }
     child.parent = parent
   },
-  insertInContainerBefore(container: CanvasContainer, child: Instance | TextInstance) {
+  insertInContainerBefore(
+    container: CanvasContainer,
+    child: Instance | TextInstance,
+    _beforeChild: Instance | TextInstance,
+  ) {
     if (typeof child === 'string') return
     setRootNode(container, child)
   },
@@ -204,10 +224,13 @@ const hostConfig = {
   finalizeInitialChildren() {
     return false
   },
-  prepareUpdate(): UpdatePayload {
-    return true
-  },
-  commitUpdate(instance: Instance, _payload: UpdatePayload, type: HostType, _oldProps: HostProps, newProps: HostProps) {
+  commitUpdate(
+    instance: Instance,
+    type: HostType,
+    _oldProps: HostProps,
+    newProps: HostProps,
+    _internalHandle: unknown,
+  ) {
     const nextProps = sanitizeProps(type, newProps)
     const prevProps = instance.props
     instance.props = nextProps
@@ -219,10 +242,10 @@ const hostConfig = {
       instance.dragOffset = [0, 0]
     }
   },
-  commitTextUpdate() {
+  commitTextUpdate(_textInstance: TextInstance, _oldText: string, _newText: string) {
     // no-op
   },
-  prepareForCommit() {
+  prepareForCommit(_container: CanvasContainer) {
     return null
   },
   resetAfterCommit(container: CanvasContainer) {
@@ -246,7 +269,7 @@ const hostConfig = {
       context.restore()
     }
   },
-  detachDeletedInstance() {
+  detachDeletedInstance(_node: Instance) {
     // no-op
   },
   scheduleTimeout: setTimeout,
@@ -255,11 +278,84 @@ const hostConfig = {
   preparePortalMount() {
     // no-op
   },
+  getInstanceFromNode(_node: unknown) {
+    return null
+  },
   beforeActiveInstanceBlur() {
     // no-op
   },
   afterActiveInstanceBlur() {
     // no-op
+  },
+  prepareScopeUpdate(_scopeInstance: unknown, _instance: Instance) {
+    // no-op
+  },
+  getInstanceFromScope(_scopeInstance: unknown) {
+    return null
+  },
+  setCurrentUpdatePriority(newPriority: number) {
+    currentUpdatePriority = newPriority
+  },
+  getCurrentUpdatePriority() {
+    return currentUpdatePriority
+  },
+  resolveUpdatePriority() {
+    return currentUpdatePriority !== NoEventPriority ? currentUpdatePriority : DefaultEventPriority
+  },
+  requestPostPaintCallback(callback: (time: number) => void) {
+    if (typeof requestAnimationFrame === 'function') {
+      requestAnimationFrame((time) => callback(time))
+      return
+    }
+    setTimeout(() => callback(Date.now()), 0)
+  },
+  shouldAttemptEagerTransition() {
+    return false
+  },
+  trackSchedulerEvent() {
+    // no-op
+  },
+  resolveEventType() {
+    if (typeof window === 'undefined') {
+      return null
+    }
+    return window.event ? window.event.type : null
+  },
+  resolveEventTimeStamp() {
+    if (typeof window === 'undefined') {
+      return -1.1
+    }
+    const event = window.event
+    return event && typeof event.timeStamp === 'number' ? event.timeStamp : -1.1
+  },
+  NotPendingTransition,
+  HostTransitionContext,
+  resetFormInstance(_form: FormInstance) {
+    // no-op
+  },
+  maySuspendCommit(_type: HostType, _props: HostProps) {
+    return false
+  },
+  maySuspendCommitOnUpdate(_type: HostType, _oldProps: HostProps, _newProps: HostProps) {
+    return false
+  },
+  maySuspendCommitInSyncRender(_type: HostType, _props: HostProps) {
+    return false
+  },
+  preloadInstance(_instance: Instance, _type: HostType, _props: HostProps) {
+    return false
+  },
+  startSuspendingCommit() {
+    return null
+  },
+  suspendInstance(_suspendedState: unknown, _instance: Instance, _type: HostType, _props: HostProps) {
+    // no-op
+  },
+  waitForCommitToBeReady(_suspendedState: unknown, _timeout: number) {
+    return null
+  },
+  getSuspendedCommitReason() {
+    return null
   },
   scheduleMicrotask(task: () => void) {
     queueMicrotask(task)
@@ -274,12 +370,13 @@ const hostConfig = {
   TextInstance,
   SuspenseInstance,
   HydratableInstance,
+  FormInstance,
   PublicInstance,
   HostContext,
-  UpdatePayload,
   ChildSet,
   TimeoutHandle,
-  NoTimeout
+  NoTimeout,
+  TransitionStatus
 >
 
 const reconciler = Reconciler(hostConfig)
@@ -312,14 +409,21 @@ export function createVelloRoot(canvas: HTMLCanvasElement, options: RendererOpti
 
   const reconRoot = reconciler.createContainer(
     container,
-    0,
+    LegacyRoot,
     null,
     false,
     null,
     '',
-    (error) => {
-      console.error('[rvello] recoverable error', error)
+    (error, info) => {
+      console.error('[rvello] uncaught error', error, info)
     },
+    (error, info) => {
+      console.error('[rvello] caught error', error, info)
+    },
+    (error, info) => {
+      console.error('[rvello] recoverable error', error, info)
+    },
+    () => undefined,
     null,
   )
 

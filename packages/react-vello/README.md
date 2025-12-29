@@ -4,22 +4,28 @@
 
 **React renderer for Vello (2D graphics with wgpu)**
 
-[![npm version](https://img.shields.io/npm/v/react-vello.svg)](https://www.npmjs.com/package/react-vello)
-[![license](https://img.shields.io/npm/l/react-vello.svg)](https://github.com/mblode/react-vello/blob/main/LICENSE.md)
-
-[GitHub](https://github.com/mblode/react-vello) | [npm](https://www.npmjs.com/package/react-vello)
+<p align="center">
+  <a href="https://www.npmjs.com/package/react-vello">
+    <img src="https://img.shields.io/npm/v/react-vello?style=flat&colorA=000000&colorB=000000" />
+  </a>
+  <a href="https://github.com/mblode/react-vello/blob/main/LICENSE.md">
+    <img src="https://img.shields.io/github/license/mblode/react-vello?style=flat&colorA=000000&colorB=000000" />
+  </a>
+</p>
 
 </div>
 
 Inspired by [react-three-fiber](https://github.com/pmndrs/react-three-fiber) and [Konva](https://github.com/konvajs/konva).
 
-## Features
+## Demo
 
-- Declarative React components for 2D graphics
-- Hardware-accelerated rendering with WebGPU
-- Built on top of Vello's high-performance WASM renderer
-- Familiar React patterns and reconciliation
-- TypeScript support
+Try the live demo.
+
+<p>
+<a href="https://react-vello.blode.co">
+<img alt="View demo" src=".github/assets/demo.svg" width="200" />
+</a>
+</p>
 
 ## Install
 
@@ -54,18 +60,14 @@ root.render(
     >
       Hello Vello
     </Text>
-  </Canvas>,
+  </Canvas>
 );
 ```
 
-## Requirements
+## Notes
 
-- WebGPU is required; use a Chromium-based browser with WebGPU enabled.
+- WebGPU is required; use a browser with WebGPU enabled.
 - The WASM renderer ships with the package; no extra setup required.
-
-## Contributing
-
-Contributions are welcome! Please feel free to submit a Pull Request.
 
 ## License
 

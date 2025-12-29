@@ -12,8 +12,8 @@
 - `pnpm -C packages/examples dev` starts the Vite WebGPU demo.
 - `pnpm -C packages/examples preview` serves the production build locally.
 - `pnpm -C packages/react-vello build` builds the library and copies WASM assets into `dist/`.
-- `pnpm build` runs all package builds (typecheck + bundling).
-- `pnpm typecheck` or `pnpm lint` runs TypeScript `--noEmit` checks across packages.
+- `pnpm build` runs all package builds (check-types + bundling).
+- `pnpm check-types` or `pnpm lint` runs TypeScript `--noEmit` checks across packages.
 - `pnpm test` is a placeholder; no automated suite yet.
 - `pnpm wasm:build` / `pnpm wasm:watch` builds the Rust/WASM renderer with `wasm-pack`.
 
