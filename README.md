@@ -2,7 +2,7 @@
 
 # react-vello
 
-**React renderer for Vello (2D graphics with wgpu)**
+**Blazing fast React renderer powered by [Vello](https://github.com/linebender/vello)**
 
 <p align="center">
   <a href="https://www.npmjs.com/package/react-vello">
@@ -14,8 +14,6 @@
 </p>
 
 </div>
-
-Inspired by [react-three-fiber](https://github.com/pmndrs/react-three-fiber) and [Konva](https://github.com/konvajs/konva).
 
 ## Demo
 
@@ -72,3 +70,7 @@ root.render(
 ## License
 
 [MIT](LICENSE.md)
+
+---
+
+<sub>Inspired by [react-three-fiber](https://github.com/pmndrs/react-three-fiber) and [Konva](https://github.com/konvajs/konva).</sub>
