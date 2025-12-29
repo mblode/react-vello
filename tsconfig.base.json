@@ -15,9 +15,6 @@
     "resolveJsonModule": true,
     "isolatedModules": true,
     "esModuleInterop": true,
-    "types": ["@webgpu/types"],
-    "paths": {
-      "react-vello": ["packages/react-vello/src/index.ts"]
-    }
+    "types": ["@webgpu/types"]
   }
 }
