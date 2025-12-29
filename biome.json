@@ -7,14 +7,15 @@
   },
   "files": {
     "ignoreUnknown": true,
-    "ignore": [
-      "node_modules",
-      "dist",
-      "coverage",
-      ".turbo",
-      "**/pkg/**",
-      "**/target/**",
-      "packages/react-vello/src/wasm/**"
+    "includes": [
+      "**",
+      "!!**/node_modules",
+      "!!**/dist",
+      "!!**/coverage",
+      "!!**/.turbo",
+      "!!**/pkg",
+      "!!**/target",
+      "!!packages/react-vello/src/wasm"
     ]
   },
   "formatter": {
@@ -28,7 +29,11 @@
     "rules": {
       "recommended": true,
       "suspicious": {
-        "noExplicitAny": "off"
+        "noExplicitAny": "off",
+        "noPrototypeBuiltins": "off"
+      },
+      "style": {
+        "noNonNullAssertion": "off"
       }
     }
   },
@@ -49,7 +54,7 @@
   },
   "overrides": [
     {
-      "include": ["packages/examples/**"],
+      "includes": ["packages/examples/**"],
       "javascript": {
         "formatter": {
           "quoteStyle": "double",

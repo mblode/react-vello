@@ -13,7 +13,7 @@
     "test": "turbo test",
     "lint": "turbo lint",
     "lint:biome": "biome lint .",
-    "typecheck": "turbo typecheck",
+    "check-types": "turbo check-types",
     "format": "biome format --write .",
     "format:check": "biome format .",
     "changeset": "changeset",

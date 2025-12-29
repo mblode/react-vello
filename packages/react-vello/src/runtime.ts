@@ -286,7 +286,7 @@ export function sanitizeProps<T extends HostType>(type: T, rawProps: HostPropsMa
       console.warn('[rvello] Text children must be strings or numbers; non-text children are ignored.')
     }
     if (text !== undefined) {
-      return { ...(rest as HostPropsMap['Text']), text } as HostPropsMap[T]
+      return { ...rest, text } as unknown as HostPropsMap[T]
     }
   }
   return rest as HostPropsMap[T]
