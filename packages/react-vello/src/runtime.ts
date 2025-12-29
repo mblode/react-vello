@@ -240,12 +240,55 @@ export function setRootNode(container: CanvasContainer, node: SceneNode | null):
   scheduleRender(container)
 }
 
-export function sanitizeProps<T extends HostType>(rawProps: HostPropsMap[T]): HostPropsMap[T] {
+let warnedNonTextChild = false
+
+function extractTextChildren(children: unknown): { text?: string; hasNonText: boolean } {
+  let text = ''
+  let hasText = false
+  let hasNonText = false
+
+  const visit = (value: unknown) => {
+    if (value === null || value === undefined || typeof value === 'boolean') {
+      return
+    }
+    if (typeof value === 'string' || typeof value === 'number') {
+      text += String(value)
+      hasText = true
+      return
+    }
+    if (Array.isArray(value)) {
+      for (const item of value) {
+        visit(item)
+      }
+      return
+    }
+    hasNonText = true
+  }
+
+  visit(children)
+
+  return {
+    text: hasText ? text : undefined,
+    hasNonText,
+  }
+}
+
+export function sanitizeProps<T extends HostType>(type: T, rawProps: HostPropsMap[T]): HostPropsMap[T] {
   if (!rawProps || typeof rawProps !== 'object') {
     return rawProps
   }
 
   const { children: _children, ...rest } = rawProps as HostPropsMap[T] & { children?: unknown }
+  if (type === 'Text') {
+    const { text, hasNonText } = extractTextChildren(_children)
+    if (hasNonText && !warnedNonTextChild) {
+      warnedNonTextChild = true
+      console.warn('[rvello] Text children must be strings or numbers; non-text children are ignored.')
+    }
+    if (text !== undefined) {
+      return { ...(rest as HostPropsMap['Text']), text } as HostPropsMap[T]
+    }
+  }
   return rest as HostPropsMap[T]
 }
 

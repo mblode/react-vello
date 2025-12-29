@@ -413,18 +413,20 @@ function DemoScene({
       />
       {handleNodes}
       <Text
-        text="Bezier Workbench"
         origin={[padding + 20, padding + 18]}
         font={{ family: "Space Grotesk", size: 16, weight: 600, lineHeight: 20 }}
         fill={{ kind: "solid", color: "#e2e8f0" }}
-      />
+      >
+        Bezier Workbench
+      </Text>
       <Text
-        text={statusLabel}
         origin={[padding + 20, padding + 38]}
         maxWidth={Math.max(0, frameWidth - 40)}
         font={{ family: "Space Grotesk", size: 11, weight: 500, lineHeight: 14 }}
         fill={{ kind: "solid", color: "#94a3b8" }}
-      />
+      >
+        {statusLabel}
+      </Text>
     </Canvas>
   );
 }

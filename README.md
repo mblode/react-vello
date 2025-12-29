@@ -30,11 +30,12 @@ root.render(
   <Canvas width={640} height={360}>
     <Rect origin={[40, 40]} size={[200, 120]} fill={{ kind: 'solid', color: '#3b82f6' }} radius={16} />
     <Text
-      text="Hello Vello"
       origin={[60, 110]}
       font={{ family: 'Space Grotesk', size: 32, weight: 600 }}
       fill={{ kind: 'solid', color: '#0f172a' }}
-    />
+    >
+      Hello Vello
+    </Text>
   </Canvas>,
 )
 ```

@@ -105,6 +105,19 @@ const layoutPropKeys = [
   'height',
 ] as const
 
+function hasTextChildren(children: unknown): boolean {
+  if (children === null || children === undefined || typeof children === 'boolean') {
+    return false
+  }
+  if (typeof children === 'string' || typeof children === 'number') {
+    return true
+  }
+  if (Array.isArray(children)) {
+    return children.some(hasTextChildren)
+  }
+  return false
+}
+
 function didLayoutPropsChange(prevProps: HostProps, nextProps: HostProps): boolean {
   for (const key of layoutPropKeys) {
     const prevHas = Object.prototype.hasOwnProperty.call(prevProps, key)
@@ -134,11 +147,12 @@ const hostConfig = {
   supportsMutation: true,
   supportsPersistence: false,
   supportsHydration: false,
-  shouldSetTextContent() {
-    return false
+  shouldSetTextContent(type: HostType, props: HostProps & { children?: unknown }) {
+    if (type !== 'Text') return false
+    return hasTextChildren(props.children)
   },
   createInstance(type: HostType, props: HostProps): Instance {
-    return createSceneNode(type, sanitizeProps(props))
+    return createSceneNode(type, sanitizeProps(type, props))
   },
   createTextInstance(text: string) {
     console.warn('[rvello] Text nodes are not supported; wrap strings in <Text>.')
@@ -193,8 +207,8 @@ const hostConfig = {
   prepareUpdate(): UpdatePayload {
     return true
   },
-  commitUpdate(instance: Instance, _payload: UpdatePayload, _type: HostType, _oldProps: HostProps, newProps: HostProps) {
-    const nextProps = sanitizeProps(newProps)
+  commitUpdate(instance: Instance, _payload: UpdatePayload, type: HostType, _oldProps: HostProps, newProps: HostProps) {
+    const nextProps = sanitizeProps(type, newProps)
     const prevProps = instance.props
     instance.props = nextProps
     if (

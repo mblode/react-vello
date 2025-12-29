@@ -13,11 +13,15 @@
     "test": "turbo test",
     "lint": "turbo lint",
     "typecheck": "turbo typecheck",
+    "changeset": "changeset",
+    "changeset:version": "changeset version",
+    "release": "changeset publish",
     "clean": "turbo clean && rm -rf node_modules pnpm-lock.yaml",
     "wasm:build": "wasm-pack build crates/rvello --out-dir pkg --target web --release",
     "wasm:watch": "wasm-pack build crates/rvello --out-dir pkg --target web --dev --watch"
   },
   "devDependencies": {
+    "@changesets/cli": "^2.29.8",
     "@webgpu/types": "0.1.39",
     "turbo": "^2.1.3",
     "typescript": "~5.9.3"
