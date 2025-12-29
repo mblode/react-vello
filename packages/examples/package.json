@@ -1,5 +1,5 @@
 {
-  "name": "@react-vello/examples",
+  "name": "@react-wgpu/examples",
   "version": "0.0.0",
   "private": true,
   "type": "module",
@@ -14,8 +14,8 @@
     "test": "echo 'examples package has no unit tests yet'"
   },
   "dependencies": {
-    "@react-vello/core": "workspace:*",
-    "@react-vello/types": "workspace:*",
+    "@react-wgpu/core": "workspace:*",
+    "@react-wgpu/types": "workspace:*",
     "react": "^18.3.1",
     "react-dom": "^18.3.1"
   },

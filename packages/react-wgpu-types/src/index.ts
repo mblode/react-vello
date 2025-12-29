@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react'
+import type { CSSProperties, ReactNode } from 'react'
 
 export type Vec2 = readonly [number, number]
 export type Mat3 = readonly [number, number, number, number, number, number]
@@ -28,8 +28,16 @@ export interface SceneNodeHandle {
   id: string
 }
 
+export interface NodeRef {
+  id: string
+  getLocalTransform(): Mat3
+  getWorldTransform(): Mat3
+  getLocalBounds(): { origin: Vec2; size: Vec2 } | null
+  getWorldBounds(): { origin: Vec2; size: Vec2 } | null
+}
+
 export interface CanvasPointerEvent {
-  type: 'pointerdown' | 'pointermove' | 'pointerup' | 'click' | 'pointerenter' | 'pointerleave'
+  type: 'pointerdown' | 'pointermove' | 'pointerup' | 'click' | 'pointerenter' | 'pointerleave' | 'wheel'
   timestamp: number
   pointerId: number
   devicePixelRatio: number
@@ -42,20 +50,39 @@ export interface CanvasPointerEvent {
   preventDefault(): void
   capturePointer(pointerId: number): void
   releasePointerCapture(pointerId: number): void
+  delta?: Vec2
 }
 
 export interface CanvasWheelEvent extends CanvasPointerEvent {
   delta: Vec2
 }
 
+export type CanvasDragEvent = Omit<CanvasPointerEvent, 'type' | 'delta'> & {
+  type: 'dragstart' | 'dragmove' | 'dragend'
+  delta: Vec2
+}
+
 export type CanvasPointerHandler = (event: CanvasPointerEvent) => void
 export type CanvasWheelHandler = (event: CanvasWheelEvent) => void
+export type CanvasDragHandler = (event: CanvasDragEvent) => void
 
 export interface NodeProps {
   id?: string
   opacity?: number
   transform?: Mat3
+  x?: number
+  y?: number
+  rotation?: number
+  scaleX?: number
+  scaleY?: number
+  offset?: Vec2
+  offsetX?: number
+  offsetY?: number
   visible?: boolean
+  listening?: boolean
+  hitSlop?: number | Vec2
+  draggable?: boolean
+  _useStrictMode?: boolean
   metadata?: Record<string, unknown>
   onPointerDown?: CanvasPointerHandler
   onPointerMove?: CanvasPointerHandler
@@ -64,15 +91,25 @@ export interface NodeProps {
   onPointerLeave?: CanvasPointerHandler
   onClick?: CanvasPointerHandler
   onWheel?: CanvasWheelHandler
+  onDragStart?: CanvasDragHandler
+  onDragMove?: CanvasDragHandler
+  onDragEnd?: CanvasDragHandler
 }
 
 export interface CanvasProps {
-  width: number
-  height: number
+  width?: number
+  height?: number
+  autoSize?: boolean
   devicePixelRatio?: number
   colorSpace?: 'srgb' | 'display-p3'
   antialiasing?: 'fast' | 'msaa' | 'none'
   backgroundColor?: string | RgbaColor
+  className?: string
+  style?: CSSProperties
+  tabIndex?: number
+  role?: string
+  title?: string
+  ariaLabel?: string
   onReady?: (context: CanvasContext) => void
   onError?: (error: Error) => void
   children?: ReactNode
@@ -83,6 +120,7 @@ export interface CanvasContext {
   presentationSize: Vec2
   requestFrame(): void
   readPixels(target: Uint8Array, rect?: { origin: Vec2; size: Vec2 }): Promise<void>
+  backend: 'webgpu' | 'canvas'
 }
 
 export interface GroupProps extends NodeProps {
@@ -104,8 +142,10 @@ export interface GroupProps extends NodeProps {
 }
 
 export interface RectProps extends NodeProps {
-  origin: Vec2
-  size: Vec2
+  origin?: Vec2
+  size?: Vec2
+  width?: number
+  height?: number
   radius?: number | Vec2 | readonly [Vec2, Vec2, Vec2, Vec2]
   fill?: Paint
   stroke?: Stroke
@@ -128,7 +168,7 @@ export interface TextFont {
 
 export interface TextProps extends NodeProps {
   text: string
-  origin: Vec2
+  origin?: Vec2
   maxWidth?: number
   align?: 'start' | 'center' | 'end'
   font: TextFont
@@ -137,8 +177,10 @@ export interface TextProps extends NodeProps {
 
 export interface ImageProps extends NodeProps {
   source: string | ImageBitmap | HTMLImageElement
-  origin: Vec2
-  size: Vec2
+  origin?: Vec2
+  size?: Vec2
+  width?: number
+  height?: number
   colorSpace?: 'srgb' | 'display-p3'
   opacityMap?: string
   fit?: 'cover' | 'contain' | 'stretch'
@@ -187,4 +229,4 @@ declare global {
   }
 }
 
-export type { CanvasPointerEvent as CanvasEvent }
+export type CanvasEvent = CanvasPointerEvent | CanvasDragEvent

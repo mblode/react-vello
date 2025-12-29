@@ -1,11 +1,12 @@
 {
-  "name": "@react-vello/core",
+  "name": "@react-wgpu/types",
   "version": "0.0.1",
   "private": true,
   "type": "module",
   "exports": {
     ".": {
       "types": "./src/index.ts",
+      "import": "./src/index.ts",
       "default": "./src/index.ts"
     }
   },
@@ -15,19 +16,10 @@
     "dev": "tsc --project tsconfig.json --watch",
     "typecheck": "tsc --project tsconfig.json --noEmit",
     "lint": "tsc --project tsconfig.json --noEmit",
-    "test": "echo 'renderer not implemented yet'"
-  },
-  "dependencies": {
-    "@react-vello/types": "workspace:*",
-    "react-reconciler": "0.29.0"
-  },
-  "peerDependencies": {
-    "react": "^18.3.1",
-    "react-dom": "^18.3.1"
+    "test": "echo 'types-only package'"
   },
   "devDependencies": {
     "@types/react": "^18.3.3",
-    "@types/react-reconciler": "^0.28.8",
     "typescript": "~5.9.3"
   }
 }

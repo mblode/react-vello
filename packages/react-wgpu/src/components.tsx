@@ -1,5 +1,5 @@
-import { createElement } from 'react'
-import type { ComponentType, ReactNode } from 'react'
+import { createElement, forwardRef } from 'react'
+import type { ForwardRefExoticComponent, ReactNode, RefAttributes } from 'react'
 import type {
   CanvasProps,
   ClipPathProps,
@@ -7,19 +7,22 @@ import type {
   ImageProps,
   LinearGradientProps,
   MaskProps,
+  NodeRef,
   PathProps,
   RadialGradientProps,
   RectProps,
   TextProps,
-} from '@react-vello/types'
+} from '@react-wgpu/types'
 import type { HostType } from './runtime'
-
-type HostComponent<Props> = ComponentType<Props>
 
 type WithChildren<Props> = Props & { children?: ReactNode }
 
+type HostComponent<Props> = ForwardRefExoticComponent<WithChildren<Props> & RefAttributes<NodeRef>>
+
 function createHostComponent<Type extends HostType, Props>(type: Type): HostComponent<Props> {
-  const Component = (props: WithChildren<Props>) => createElement(type as unknown as string, props)
+  const Component = forwardRef<NodeRef, WithChildren<Props>>(function HostComponent(props, ref) {
+    return createElement(type as unknown as string, { ...props, ref })
+  })
   Component.displayName = `Host(${type})`
   return Component as HostComponent<Props>
 }

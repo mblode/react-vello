@@ -20,12 +20,12 @@ importers:
 
   packages/examples:
     dependencies:
-      '@react-vello/core':
+      '@react-wgpu/core':
         specifier: workspace:*
-        version: link:../react-vello
-      '@react-vello/types':
+        version: link:../react-wgpu
+      '@react-wgpu/types':
         specifier: workspace:*
-        version: link:../react-vello-types
+        version: link:../react-wgpu-types
       react:
         specifier: ^18.3.1
         version: 18.3.1
@@ -49,11 +49,11 @@ importers:
         specifier: npm:rolldown-vite@7.2.2
         version: rolldown-vite@7.2.2
 
-  packages/react-vello:
+  packages/react-wgpu:
     dependencies:
-      '@react-vello/types':
+      '@react-wgpu/types':
         specifier: workspace:*
-        version: link:../react-vello-types
+        version: link:../react-wgpu-types
       react:
         specifier: ^18.3.1
         version: 18.3.1
@@ -74,7 +74,7 @@ importers:
         specifier: ~5.9.3
         version: 5.9.3
 
-  packages/react-vello-types:
+  packages/react-wgpu-types:
     devDependencies:
       '@types/react':
         specifier: ^18.3.3
