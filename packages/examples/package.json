@@ -7,7 +7,7 @@
     "predev": "node ../../scripts/ensure-wasm.cjs",
     "dev": "vite",
     "prebuild": "node ../../scripts/ensure-wasm.cjs",
-    "build": "tsc --project tsconfig.json && vite build",
+    "build": "vite build",
     "preview": "vite preview",
     "lint": "tsc --project tsconfig.json --noEmit",
     "check-types": "tsc --project tsconfig.json --noEmit",
