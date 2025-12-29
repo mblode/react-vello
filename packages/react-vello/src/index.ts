@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react'
 import Reconciler from 'react-reconciler'
-import type { CanvasContext } from '@react-vello/types'
+import type { CanvasContext } from './types'
 import {
   type CanvasContainer,
   type HostProps,
@@ -15,6 +15,7 @@ import {
 } from './runtime'
 import { createWasmRenderer, type WasmRenderer } from './wasmBridge'
 export * from './components'
+export * from './types'
 
 const supportsWebGPU = typeof navigator !== 'undefined' && 'gpu' in navigator
 

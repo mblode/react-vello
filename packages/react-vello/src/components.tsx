@@ -12,7 +12,7 @@ import type {
   RadialGradientProps,
   RectProps,
   TextProps,
-} from '@react-vello/types'
+} from './types'
 import type { HostType } from './runtime'
 
 type WithChildren<Props> = Props & { children?: ReactNode }

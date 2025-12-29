@@ -1,4 +1,4 @@
-import type { Mat3, Vec2 } from '@react-vello/types'
+import type { Mat3, Vec2 } from './types'
 
 export const IDENTITY_MATRIX: Mat3 = [1, 0, 0, 1, 0, 0]
 

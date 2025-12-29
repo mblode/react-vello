@@ -17,7 +17,7 @@ import type {
   TextProps,
   Mat3,
   Vec2,
-} from '@react-vello/types'
+} from './types'
 import { colorToCss, paintToRgba, rgbaToCss } from './color'
 import { resolveCornerRadius } from './geometry'
 import { encodeFrame } from './encoder'

@@ -14,8 +14,8 @@ import {
   Text,
   createVelloRoot,
   type VelloRoot,
-} from "@react-vello/core";
-import type { CanvasPointerEvent } from "@react-vello/types";
+  type CanvasPointerEvent,
+} from "react-vello";
 
 type SupportStatus =
   | { ok: true }

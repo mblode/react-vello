@@ -14,8 +14,7 @@
     "test": "echo 'examples package has no unit tests yet'"
   },
   "dependencies": {
-    "@react-vello/core": "workspace:*",
-    "@react-vello/types": "workspace:*",
+    "react-vello": "workspace:*",
     "react": "^18.3.1",
     "react-dom": "^18.3.1"
   },

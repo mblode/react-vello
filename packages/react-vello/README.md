@@ -21,22 +21,27 @@ npm install react-vello react react-dom
 ```
 
 ```tsx
-import { Canvas, Rect, Text, createVelloRoot } from 'react-vello'
+import { Canvas, Rect, Text, createVelloRoot } from "react-vello";
 
-const canvas = document.querySelector('#vello') as HTMLCanvasElement
-const root = createVelloRoot(canvas)
+const canvas = document.querySelector("#vello") as HTMLCanvasElement;
+const root = createVelloRoot(canvas);
 
 root.render(
   <Canvas width={640} height={360}>
-    <Rect origin={[40, 40]} size={[200, 120]} fill={{ kind: 'solid', color: '#3b82f6' }} radius={16} />
+    <Rect
+      origin={[40, 40]}
+      size={[200, 120]}
+      fill={{ kind: "solid", color: "#3b82f6" }}
+      radius={16}
+    />
     <Text
       text="Hello Vello"
       origin={[60, 110]}
-      font={{ family: 'Space Grotesk', size: 32, weight: 600 }}
-      fill={{ kind: 'solid', color: '#0f172a' }}
+      font={{ family: "Space Grotesk", size: 32, weight: 600 }}
+      fill={{ kind: "solid", color: "#0f172a" }}
     />
   </Canvas>,
-)
+);
 ```
 
 ## Notes

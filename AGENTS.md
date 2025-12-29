@@ -1,6 +1,6 @@
 # Repository Guidelines
 
-This project is a Vite + TypeScript sandbox for experimenting with WebGPU pipelines via the `typegpu` library. Contributors should keep changes focused, reproducible, and easy to review so new GPU demos remain approachable.
+This project is a Vite + TypeScript sandbox for experimenting with WebGPU pipelines. Contributors should keep changes focused, reproducible, and easy to review so new GPU demos remain approachable.
 
 ## Project Structure & Module Organization
 

@@ -167,7 +167,8 @@ export interface TextFont {
 }
 
 export interface TextProps extends NodeProps {
-  text: string
+  text?: string
+  children?: ReactNode
   origin?: Vec2
   maxWidth?: number
   align?: 'start' | 'center' | 'end'

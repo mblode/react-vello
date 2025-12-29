@@ -20,18 +20,15 @@ importers:
 
   packages/examples:
     dependencies:
-      '@react-vello/core':
-        specifier: workspace:*
-        version: link:../react-vello
-      '@react-vello/types':
-        specifier: workspace:*
-        version: link:../react-vello-types
       react:
         specifier: ^18.3.1
         version: 18.3.1
       react-dom:
         specifier: ^18.3.1
         version: 18.3.1(react@18.3.1)
+      react-vello:
+        specifier: workspace:*
+        version: link:../react-vello
     devDependencies:
       '@types/react':
         specifier: ^18.3.3
@@ -51,9 +48,6 @@ importers:
 
   packages/react-vello:
     dependencies:
-      '@react-vello/types':
-        specifier: workspace:*
-        version: link:../react-vello-types
       react:
         specifier: ^18.3.1
         version: 18.3.1
@@ -70,15 +64,6 @@ importers:
       '@types/react-reconciler':
         specifier: ^0.28.8
         version: 0.28.8
-      typescript:
-        specifier: ~5.9.3
-        version: 5.9.3
-
-  packages/react-vello-types:
-    devDependencies:
-      '@types/react':
-        specifier: ^18.3.3
-        version: 18.3.26
       typescript:
         specifier: ~5.9.3
         version: 5.9.3

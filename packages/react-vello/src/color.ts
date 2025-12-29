@@ -1,4 +1,4 @@
-import type { Paint, RgbaColor } from '@react-vello/types'
+import type { Paint, RgbaColor } from './types'
 
 export interface NormalizedRgba {
   r: number

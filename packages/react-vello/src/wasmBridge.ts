@@ -1,6 +1,6 @@
 let wasmModulePromise: Promise<WasmModule | null> | null = null
 
-type WasmModule = typeof import('../../../crates/rvello/pkg/rvello.js')
+type WasmModule = typeof import('./wasm/rvello.js')
 
 export interface WasmRenderer {
   apply(data: Uint8Array): void
@@ -37,9 +37,9 @@ async function loadModule(): Promise<WasmModule | null> {
   if (!wasmModulePromise) {
     wasmModulePromise = (async () => {
       try {
-        const module = await import('../../../crates/rvello/pkg/rvello.js')
+        const module = await import('./wasm/rvello.js')
         if (typeof module.default === 'function') {
-          const wasmUrl = new URL('../../../crates/rvello/pkg/rvello_bg.wasm', import.meta.url)
+          const wasmUrl = new URL('./wasm/rvello_bg.wasm', import.meta.url)
           await module.default({ module_or_path: wasmUrl })
         }
         return module
