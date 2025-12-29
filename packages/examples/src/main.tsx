@@ -359,7 +359,6 @@ function DemoScene({
     <Canvas
       width={width}
       height={height}
-      devicePixelRatio={window.devicePixelRatio ?? 1}
       backgroundColor="#0b1120"
     >
       <Rect
