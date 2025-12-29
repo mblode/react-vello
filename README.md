@@ -73,4 +73,4 @@ root.render(
 
 ---
 
-<sub>Inspired by [react-three-fiber](https://github.com/pmndrs/react-three-fiber) and [Konva](https://github.com/konvajs/konva).</sub>
+<sub>Inspired by [react-three-fiber](https://github.com/pmndrs/react-three-fiber), [react-konva](https://github.com/konvajs/react-konva), and [react-pdf](https://github.com/diegomura/react-pdf).</sub>
