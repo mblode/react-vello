@@ -5,6 +5,7 @@ pkg
 coverage
 .turbo
 *.log
+*.tsbuildinfo
 packages/**/dist
 crates/**/target
 !crates/rvello/pkg/
