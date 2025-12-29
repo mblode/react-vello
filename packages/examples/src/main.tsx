@@ -17,6 +17,7 @@ import {
   Rect,
   createVelloRoot,
   type CanvasContext,
+  type NodeRef,
   type RectProps,
   type VelloRoot,
   type CanvasPointerEvent,
@@ -226,7 +227,7 @@ function App() {
     }
 
     const root = createVelloRoot(canvas, {
-      onError: (error) => {
+      onError: (error: unknown) => {
         console.error("[rvello] WebGPU renderer error", error);
       },
     });
@@ -489,7 +490,7 @@ type ParticleSimulationOptions = {
   onFrame?: (frame: ParticleFrame) => void;
 };
 
-type MutableRectNode = {
+type MutableRectNode = NodeRef & {
   props: RectProps;
 };
 
@@ -557,7 +558,9 @@ function useParticleSimulation({
       if (currentWidth > 0 && currentHeight > 0) {
         const particles = particlesRef.current;
         for (let i = 0; i < particles.length; i += 1) {
-          updateParticle(particles[i], delta, currentWidth, currentHeight);
+          const particle = particles[i];
+          if (!particle) continue;
+          updateParticle(particle, delta, currentWidth, currentHeight);
         }
         onFrameRef.current?.({
           particles,
@@ -624,6 +627,7 @@ function ReactDomStressTest({
 
       for (let i = 0; i < particles.length; i += 1) {
         const particle = particles[i];
+        if (!particle) continue;
         const element = elements[i];
         if (!element) continue;
         if (!ready[i]) {
@@ -689,6 +693,7 @@ function ReactKonvaStressTest({
       const nodes = circleNodesRef.current;
       for (let i = 0; i < particles.length; i += 1) {
         const particle = particles[i];
+        if (!particle) continue;
         const node = nodes[i];
         if (!node) continue;
         const pulse = getParticlePulse(timeSeconds, particle.twinkle);
@@ -765,6 +770,7 @@ function ReactVelloStressTest({
       const nodes = nodeRefs.current;
       for (let i = 0; i < particles.length; i += 1) {
         const particle = particles[i];
+        if (!particle) continue;
         const node = nodes[i];
         if (!node) continue;
         const pulse = getParticlePulse(timeSeconds, particle.twinkle);

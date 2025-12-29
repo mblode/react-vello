@@ -1,5 +1,5 @@
 {
-  "buildCommand": "pnpm --filter @react-vello/examples build",
+  "buildCommand": "pnpm build --filter @react-vello/examples...",
   "installCommand": "pnpm install",
   "outputDirectory": "packages/examples/dist"
 }
