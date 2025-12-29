@@ -1,7 +1,6 @@
 import "./style.css";
 import {
   StrictMode,
-  useCallback,
   useEffect,
   useRef,
   useState,
@@ -12,31 +11,31 @@ import {
   Group,
   Path,
   Rect,
+  Text,
   createVelloRoot,
   type VelloRoot,
 } from "@react-vello/core";
+import type { CanvasPointerEvent } from "@react-vello/types";
 
 type SupportStatus =
   | { ok: true }
   | { ok: false; reason: string; hint?: string };
 
-type PointerState = {
+type Point = {
   x: number;
   y: number;
-  targetX: number;
-  targetY: number;
-  prevX: number;
-  prevY: number;
-  down: boolean;
-  speed: number;
 };
 
-type Burst = {
-  x: number;
-  y: number;
-  started: number;
-  duration: number;
-  color: string;
+type HandleId = "start" | "control1" | "control2" | "end";
+
+type HandleMap = Record<HandleId, Point>;
+
+const HANDLE_ORDER: HandleId[] = ["start", "control1", "control2", "end"];
+const HANDLE_LABELS: Record<HandleId, string> = {
+  start: "Start",
+  control1: "Control A",
+  control2: "Control B",
+  end: "End",
 };
 
 async function detectWebGPU(): Promise<SupportStatus> {
@@ -123,17 +122,21 @@ function useViewportSize() {
   return size;
 }
 
-const BURST_PALETTE = ["#22d3ee", "#38bdf8", "#a78bfa", "#f97316"];
-
 function lerp(start: number, end: number, t: number): number {
   return start + (end - start) * t;
 }
 
-function buildCirclePath(cx: number, cy: number, radius: number): string {
-  const r = Math.max(0, radius);
-  const startX = cx + r;
-  const startY = cy;
-  return `M ${startX} ${startY} A ${r} ${r} 0 1 0 ${cx - r} ${cy} A ${r} ${r} 0 1 0 ${startX} ${startY}`;
+function buildCubicPath(start: Point, c1: Point, c2: Point, end: Point): string {
+  return `M ${start.x} ${start.y} C ${c1.x} ${c1.y}, ${c2.x} ${c2.y}, ${end.x} ${end.y}`;
+}
+
+function getCubicPoint(t: number, p0: Point, p1: Point, p2: Point, p3: Point): Point {
+  const a = { x: lerp(p0.x, p1.x, t), y: lerp(p0.y, p1.y, t) };
+  const b = { x: lerp(p1.x, p2.x, t), y: lerp(p1.y, p2.y, t) };
+  const c = { x: lerp(p2.x, p3.x, t), y: lerp(p2.y, p3.y, t) };
+  const d = { x: lerp(a.x, b.x, t), y: lerp(a.y, b.y, t) };
+  const e = { x: lerp(b.x, c.x, t), y: lerp(b.y, c.y, t) };
+  return { x: lerp(d.x, e.x, t), y: lerp(d.y, e.y, t) };
 }
 
 function App() {
@@ -204,280 +207,226 @@ function DemoScene({
   height: number;
 }) {
   const [tick, setTick] = useState(0);
-  const pointerRef = useRef<PointerState>({
-    x: width * 0.5,
-    y: height * 0.5,
-    targetX: width * 0.5,
-    targetY: height * 0.5,
-    prevX: width * 0.5,
-    prevY: height * 0.5,
-    down: false,
-    speed: 0,
-  });
-  const burstsRef = useRef<Burst[]>([]);
-
-  const spawnBurst = useCallback((x: number, y: number) => {
-    const now = performance.now();
-    const paletteIndex = Math.floor(now / 120) % BURST_PALETTE.length;
-    const color = BURST_PALETTE[paletteIndex];
-    const bursts = burstsRef.current;
-    bursts.push({ x, y, started: now, duration: 900, color });
-    if (bursts.length > 8) {
-      bursts.shift();
-    }
-  }, []);
-
-  useEffect(() => {
-    const pointer = pointerRef.current;
-    pointer.x = width * 0.5;
-    pointer.y = height * 0.5;
-    pointer.targetX = pointer.x;
-    pointer.targetY = pointer.y;
-    pointer.prevX = pointer.x;
-    pointer.prevY = pointer.y;
-  }, [width, height]);
-
-  useEffect(() => {
-    const handlePointerMove = (event: PointerEvent) => {
-      const x = clamp(event.clientX, 0, width);
-      const y = clamp(event.clientY, 0, height);
-      const pointer = pointerRef.current;
-      pointer.targetX = x;
-      pointer.targetY = y;
-    };
-
-    const handlePointerDown = (event: PointerEvent) => {
-      const x = clamp(event.clientX, 0, width);
-      const y = clamp(event.clientY, 0, height);
-      const pointer = pointerRef.current;
-      pointer.down = true;
-      pointer.targetX = x;
-      pointer.targetY = y;
-      spawnBurst(x, y);
-    };
-
-    const handlePointerUp = () => {
-      pointerRef.current.down = false;
-    };
-
-    window.addEventListener("pointermove", handlePointerMove);
-    window.addEventListener("pointerdown", handlePointerDown);
-    window.addEventListener("pointerup", handlePointerUp);
-    window.addEventListener("blur", handlePointerUp);
-
-    return () => {
-      window.removeEventListener("pointermove", handlePointerMove);
-      window.removeEventListener("pointerdown", handlePointerDown);
-      window.removeEventListener("pointerup", handlePointerUp);
-      window.removeEventListener("blur", handlePointerUp);
-    };
-  }, [width, height, spawnBurst]);
+  const [handles, setHandles] = useState<HandleMap>(() => ({
+    start: { x: 0.12, y: 0.52 },
+    control1: { x: 0.32, y: 0.18 },
+    control2: { x: 0.68, y: 0.82 },
+    end: { x: 0.88, y: 0.48 },
+  }));
+  const [activeHandle, setActiveHandle] = useState<HandleId | null>(null);
+  const [hoveredHandle, setHoveredHandle] = useState<HandleId | null>(null);
+  const dragRef = useRef<{
+    id: HandleId;
+    pointerId: number;
+    offset: Point;
+  } | null>(null);
 
   useEffect(() => {
     let raf: number;
-    let lastTime = performance.now();
     const loop = () => {
-      const now = performance.now();
-      const dt = Math.min(32, now - lastTime);
-      lastTime = now;
-
-      const pointer = pointerRef.current;
-      const ease = pointer.down ? 0.24 : 0.14;
-      pointer.x += (pointer.targetX - pointer.x) * ease;
-      pointer.y += (pointer.targetY - pointer.y) * ease;
-
-      const dx = pointer.x - pointer.prevX;
-      const dy = pointer.y - pointer.prevY;
-      const move = Math.hypot(dx, dy);
-      const targetSpeed = clamp(move / 20, 0, 1);
-      pointer.speed = lerp(pointer.speed, targetSpeed, 0.2);
-      pointer.prevX = pointer.x;
-      pointer.prevY = pointer.y;
-
-      const bursts = burstsRef.current;
-      burstsRef.current = bursts.filter(
-        (burst) => now - burst.started < burst.duration,
-      );
-
-      setTick((t) => (t + 1) % 3600);
+      setTick((t) => (t + 1) % 6000);
       raf = requestAnimationFrame(loop);
     };
     loop();
     return () => cancelAnimationFrame(raf);
   }, []);
 
-  const t = tick * 0.02;
-  const now = performance.now();
-  const pointer = pointerRef.current;
-  const pulse = (Math.sin(t) + 1) / 2;
   const base = Math.min(width, height);
-  const padding = clamp(Math.round(base * 0.08), 24, 72);
-  const contentWidth = Math.max(0, width - padding * 2);
-  const pointerBlend = clamp(pointer.speed + (pointer.down ? 0.55 : 0), 0, 1);
-  const pointerBiasX = (pointer.x - width * 0.5) / Math.max(1, width);
-  const pointerBiasY = (pointer.y - height * 0.5) / Math.max(1, height);
-  const waveHeight = clamp(Math.round(height * 0.22), 80, 220);
-  const waveAmplitude =
-    Math.min(waveHeight * 0.34, 42) + pulse * 12 + pointerBlend * 22;
-  const waveOffset =
-    Math.sin(t * 0.6 + pointerBiasX * 1.4) * 10 + pointerBiasX * 22;
-  const wavePath = buildWavePath(
-    contentWidth,
-    waveHeight,
-    waveAmplitude,
-    0,
-    waveOffset,
-  );
-  const wavePathSoft = buildWavePath(
-    contentWidth,
-    waveHeight,
-    waveAmplitude * 0.55,
-    0,
-    waveOffset * 0.6,
-  );
-  const waveY = clamp(
-    padding + height * 0.5 + pointerBiasY * waveHeight * 0.35,
-    padding + waveHeight * 0.25,
-    height - padding - waveHeight * 0.25,
-  );
-  const nodeCount = clamp(Math.round(contentWidth / 180), 4, 9);
-  const nodeGap = nodeCount > 1 ? contentWidth / (nodeCount - 1) : 0;
+  const padding = clamp(Math.round(base * 0.09), 32, 72);
+  const frameWidth = Math.max(0, width - padding * 2);
+  const frameHeight = Math.max(0, height - padding * 2);
+  const safeWidth = Math.max(1, frameWidth);
+  const safeHeight = Math.max(1, frameHeight);
+  const frameRadius = clamp(Math.round(base * 0.04), 18, 28);
 
-  const burstNodes = burstsRef.current.map((burst, index) => {
-    const progress = clamp((now - burst.started) / burst.duration, 0, 1);
-    const radius = lerp(12, 150, progress);
-    const opacity = (1 - progress) * 0.5;
-    return (
-      <Path
-        key={`burst-${index}-${burst.started}`}
-        d={buildCirclePath(burst.x, burst.y, radius)}
-        stroke={{
-          width: 2.5,
-          paint: { kind: "solid", color: burst.color },
-          cap: "round",
-        }}
-        opacity={opacity}
-      />
-    );
+  const toScreen = (point: Point): Point => ({
+    x: padding + point.x * safeWidth,
+    y: padding + point.y * safeHeight,
   });
 
-  const haloSize = 100 + pointerBlend * 160;
-  const haloNode = (
-    <Rect
-      origin={[pointer.x - haloSize / 2, pointer.y - haloSize / 2]}
-      size={[haloSize, haloSize]}
-      radius={haloSize / 2}
-      fill={{ kind: "solid", color: "#38bdf8" }}
-      opacity={0.08 + pointerBlend * 0.12}
-    />
-  );
-  const ringNode = (
-    <Path
-      d={buildCirclePath(pointer.x, pointer.y, 32 + pointerBlend * 48)}
-      stroke={{
-        width: 2,
-        paint: { kind: "solid", color: "#38bdf8" },
-        cap: "round",
-      }}
-      opacity={0.2 + pointerBlend * 0.5}
-    />
-  );
-  const coreNode = (
-    <Rect
-      origin={[pointer.x - 3, pointer.y - 3]}
-      size={[6, 6]}
-      radius={3}
-      fill={{ kind: "solid", color: "#e2e8f0" }}
-      opacity={0.8}
-    />
-  );
+  const screenHandles: HandleMap = {
+    start: toScreen(handles.start),
+    control1: toScreen(handles.control1),
+    control2: toScreen(handles.control2),
+    end: toScreen(handles.end),
+  };
 
-  const nodeNodes: JSX.Element[] = [];
-  for (let i = 0; i < nodeCount; i += 1) {
-    const x = padding + i * nodeGap;
-    const phase = t * (0.6 + pointerBlend * 0.45) + i * 0.7;
-    const y =
-      waveY +
-      Math.sin(phase) * (waveAmplitude * (0.5 + pointerBlend * 0.25));
-    const size = i % 3 === 0 ? 9 : 6;
-    const color = i % 2 === 0 ? "#38bdf8" : "#22d3ee";
-    const glow = 0.4 + 0.6 * Math.sin(phase + t);
-    nodeNodes.push(
-      <Rect
-        key={`node-${i}`}
-        origin={[x - size / 2, y - size / 2]}
-        size={[size, size]}
-        radius={size / 2}
-        fill={{ kind: "solid", color }}
-        opacity={0.55 + glow * 0.35}
-      />,
+  const start = screenHandles.start;
+  const control1 = screenHandles.control1;
+  const control2 = screenHandles.control2;
+  const end = screenHandles.end;
+
+  const curvePath = buildCubicPath(start, control1, control2, end);
+  const handleLineA = `M ${start.x} ${start.y} L ${control1.x} ${control1.y}`;
+  const handleLineB = `M ${end.x} ${end.y} L ${control2.x} ${control2.y}`;
+
+  const progress = (tick % 280) / 280;
+  const tracer = getCubicPoint(progress, start, control1, control2, end);
+  const tracerPulse = 0.6 + 0.4 * Math.sin(tick * 0.04);
+  const tracerRadius = 4 + tracerPulse * 3;
+  const haloRadius = tracerRadius + 6;
+  const baseStroke = clamp(Math.round(base * 0.012), 3, 8);
+
+  const updateHandle = (id: HandleId, position: Point) => {
+    const nextX = clamp((position.x - padding) / safeWidth, 0, 1);
+    const nextY = clamp((position.y - padding) / safeHeight, 0, 1);
+    setHandles((prev) => ({ ...prev, [id]: { x: nextX, y: nextY } }));
+  };
+
+  const handlePointerDown = (id: HandleId) => (event: CanvasPointerEvent) => {
+    event.preventDefault();
+    event.capturePointer(event.pointerId);
+    const handle = screenHandles[id];
+    dragRef.current = {
+      id,
+      pointerId: event.pointerId,
+      offset: {
+        x: event.position[0] - handle.x,
+        y: event.position[1] - handle.y,
+      },
+    };
+    setActiveHandle(id);
+  };
+
+  const handlePointerMove = (event: CanvasPointerEvent) => {
+    const drag = dragRef.current;
+    if (!drag || drag.pointerId !== event.pointerId) return;
+    updateHandle(drag.id, {
+      x: event.position[0] - drag.offset.x,
+      y: event.position[1] - drag.offset.y,
+    });
+  };
+
+  const handlePointerUp = (event: CanvasPointerEvent) => {
+    const drag = dragRef.current;
+    if (!drag || drag.pointerId !== event.pointerId) return;
+    dragRef.current = null;
+    setActiveHandle(null);
+    event.releasePointerCapture(event.pointerId);
+  };
+
+  const statusPoint = activeHandle ? screenHandles[activeHandle] : null;
+  const statusLabel = activeHandle && statusPoint
+    ? `${HANDLE_LABELS[activeHandle]}: ${Math.round(statusPoint.x)}, ${Math.round(statusPoint.y)}`
+    : "Drag points to edit the curve";
+
+  const handleNodes = HANDLE_ORDER.map((id) => {
+    const handle = screenHandles[id];
+    const isAnchor = id === "start" || id === "end";
+    const isActive = activeHandle === id;
+    const isHovered = hoveredHandle === id;
+    const baseRadius = isAnchor ? 9 : 7;
+    const ringRadius = baseRadius + (isActive ? 7 : isHovered ? 5 : 3);
+    const color = isAnchor ? "#38bdf8" : "#a78bfa";
+    const ringOpacity = isActive ? 0.38 : isHovered ? 0.25 : 0.16;
+
+    return (
+      <Group key={id}>
+        <Rect
+          origin={[handle.x - ringRadius, handle.y - ringRadius]}
+          size={[ringRadius * 2, ringRadius * 2]}
+          radius={ringRadius}
+          fill={{ kind: "solid", color }}
+          opacity={ringOpacity}
+          listening={false}
+        />
+        <Rect
+          origin={[handle.x - baseRadius, handle.y - baseRadius]}
+          size={[baseRadius * 2, baseRadius * 2]}
+          radius={baseRadius}
+          fill={{ kind: "solid", color }}
+          opacity={0.95}
+          hitSlop={12}
+          onPointerDown={handlePointerDown(id)}
+          onPointerMove={handlePointerMove}
+          onPointerUp={handlePointerUp}
+          onPointerEnter={() => setHoveredHandle(id)}
+          onPointerLeave={() => setHoveredHandle(null)}
+        />
+      </Group>
     );
-  }
+  });
 
   return (
     <Canvas width={width} height={height} backgroundColor="#0b1120">
       <Rect
-        origin={[-contentWidth * 0.2, -contentWidth * 0.15]}
-        size={[contentWidth * 0.7, contentWidth * 0.7]}
-        radius={contentWidth * 0.35}
-        fill={{ kind: "solid", color: "#38bdf8" }}
-        opacity={0.08}
+        origin={[padding, padding]}
+        size={[frameWidth, frameHeight]}
+        radius={frameRadius}
+        fill={{ kind: "solid", color: "#0f172a" }}
+        stroke={{ width: 1, paint: { kind: "solid", color: "#1f2937" } }}
+        opacity={0.96}
+      />
+      <Path
+        d={handleLineA}
+        stroke={{
+          width: 1.4,
+          paint: { kind: "solid", color: "#334155" },
+          cap: "round",
+          dash: [5, 6],
+        }}
+        opacity={0.55}
+      />
+      <Path
+        d={handleLineB}
+        stroke={{
+          width: 1.4,
+          paint: { kind: "solid", color: "#334155" },
+          cap: "round",
+          dash: [5, 6],
+        }}
+        opacity={0.55}
+      />
+      <Path
+        d={curvePath}
+        stroke={{
+          width: baseStroke + 5,
+          paint: { kind: "solid", color: "#1e293b" },
+          cap: "round",
+          join: "round",
+        }}
+        opacity={0.85}
+      />
+      <Path
+        d={curvePath}
+        stroke={{
+          width: baseStroke,
+          paint: { kind: "solid", color: "#38bdf8" },
+          cap: "round",
+          join: "round",
+        }}
+        opacity={0.9}
       />
       <Rect
-        origin={[width - contentWidth * 0.55, height - contentWidth * 0.45]}
-        size={[contentWidth * 0.6, contentWidth * 0.6]}
-        radius={contentWidth * 0.3}
-        fill={{ kind: "solid", color: "#a78bfa" }}
-        opacity={0.08}
+        origin={[tracer.x - haloRadius, tracer.y - haloRadius]}
+        size={[haloRadius * 2, haloRadius * 2]}
+        radius={haloRadius}
+        fill={{ kind: "solid", color: "#38bdf8" }}
+        opacity={0.16}
       />
-      <Group transform={[1, 0, 0, 1, padding, waveY - waveHeight / 2]}>
-        <Path
-          d={wavePathSoft}
-          stroke={{
-            width: 3,
-            paint: { kind: "solid", color: "#22d3ee" },
-            cap: "round",
-          }}
-          opacity={0.4}
-        />
-      </Group>
-      <Group transform={[1, 0, 0, 1, padding, waveY - waveHeight / 2]}>
-        <Path
-          d={wavePath}
-          stroke={{
-            width: 4,
-            paint: { kind: "solid", color: "#38bdf8" },
-            cap: "round",
-          }}
-          opacity={0.9}
-        />
-      </Group>
-      {nodeNodes}
-      {haloNode}
-      {burstNodes}
-      {ringNode}
-      {coreNode}
+      <Rect
+        origin={[tracer.x - tracerRadius, tracer.y - tracerRadius]}
+        size={[tracerRadius * 2, tracerRadius * 2]}
+        radius={tracerRadius}
+        fill={{ kind: "solid", color: "#e2e8f0" }}
+        opacity={0.92}
+      />
+      {handleNodes}
+      <Text
+        text="Bezier Workbench"
+        origin={[padding + 20, padding + 18]}
+        font={{ family: "Space Grotesk", size: 16, weight: 600, lineHeight: 20 }}
+        fill={{ kind: "solid", color: "#e2e8f0" }}
+      />
+      <Text
+        text={statusLabel}
+        origin={[padding + 20, padding + 38]}
+        maxWidth={Math.max(0, frameWidth - 40)}
+        font={{ family: "Space Grotesk", size: 11, weight: 500, lineHeight: 14 }}
+        fill={{ kind: "solid", color: "#94a3b8" }}
+      />
     </Canvas>
   );
-}
-
-function buildWavePath(
-  width: number,
-  height: number,
-  amplitude: number,
-  inset: number,
-  offset: number,
-): string {
-  const midY = height / 2 + offset;
-  const startX = inset;
-  const endX = width - inset;
-  const span = endX - startX;
-  const c1 = startX + span * 0.25;
-  const c2 = startX + span * 0.5;
-  const c3 = startX + span * 0.75;
-  return `M ${startX} ${midY} C ${c1} ${midY - amplitude}, ${c2} ${
-    midY + amplitude
-  }, ${c3} ${midY - amplitude} S ${endX} ${midY + amplitude}, ${endX} ${midY}`;
 }
 
 function clamp(value: number, min: number, max: number): number {

@@ -1,0 +1,9 @@
+.git
+.turbo
+.vercel
+*.log
+node_modules
+**/node_modules
+dist
+packages/**/dist
+crates/**/target
