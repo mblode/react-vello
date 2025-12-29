@@ -1,6 +1,6 @@
 <div align="center">
 
-# react-vello
+# React Vello
 
 **Blazing fast React renderer powered by [Vello](https://github.com/linebender/vello)**
 
