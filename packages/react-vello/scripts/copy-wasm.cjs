@@ -1,3 +1,4 @@
+'use strict'
 const fs = require('node:fs')
 const path = require('node:path')
 
@@ -13,9 +14,7 @@ if (!fs.existsSync(srcDir)) {
 
 const missing = files.filter((file) => !fs.existsSync(path.join(srcDir, file)))
 if (missing.length > 0) {
-  console.error(
-    `[react-vello] Missing wasm assets in src/wasm:\n${missing.map((file) => `- ${file}`).join('\n')}`,
-  )
+  console.error(`[react-vello] Missing wasm assets in src/wasm:\n${missing.map((file) => `- ${file}`).join('\n')}`)
   process.exit(1)
 }
 

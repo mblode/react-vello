@@ -19,9 +19,18 @@ export interface Stroke {
   dash?: readonly number[]
 }
 
-export type SolidPaint = { kind: 'solid'; color: string | RgbaColor }
-export type GradientPaint = { kind: 'gradient'; ref: string }
-export type ImagePaint = { kind: 'image'; nodeId: string }
+export interface SolidPaint {
+  kind: 'solid'
+  color: string | RgbaColor
+}
+export interface GradientPaint {
+  kind: 'gradient'
+  ref: string
+}
+export interface ImagePaint {
+  kind: 'image'
+  nodeId: string
+}
 export type Paint = SolidPaint | GradientPaint | ImagePaint
 
 export interface SceneNodeHandle {

@@ -1,5 +1,5 @@
 {
-  "$schema": "https://biomejs.dev/schemas/2.3.10/schema.json",
+  "$schema": "./node_modules/@biomejs/biome/configuration_schema.json",
   "vcs": {
     "enabled": true,
     "clientKind": "git",
@@ -8,14 +8,14 @@
   "files": {
     "ignoreUnknown": true,
     "includes": [
-      "**",
       "!!**/node_modules",
       "!!**/dist",
       "!!**/coverage",
       "!!**/.turbo",
       "!!**/pkg",
       "!!**/target",
-      "!!packages/react-vello/src/wasm"
+      "!!packages/react-vello/src/wasm",
+      "!!packages/examples/src/style.css"
     ]
   },
   "formatter": {
@@ -28,12 +28,26 @@
     "enabled": true,
     "rules": {
       "recommended": true,
+      "complexity": {
+        "noExcessiveCognitiveComplexity": "off",
+        "noVoid": "off"
+      },
+      "performance": {
+        "noNamespaceImport": "off",
+        "noBarrelFile": "off"
+      },
       "suspicious": {
         "noExplicitAny": "off",
-        "noPrototypeBuiltins": "off"
+        "noPrototypeBuiltins": "off",
+        "noArrayIndexKey": "off",
+        "useAwait": "off"
       },
       "style": {
-        "noNonNullAssertion": "off"
+        "noNonNullAssertion": "off",
+        "noNamespace": "off",
+        "useFilenamingConvention": "off",
+        "noNestedTernary": "off",
+        "useForOf": "off"
       }
     }
   },
@@ -62,5 +76,6 @@
         }
       }
     }
-  ]
+  ],
+  "extends": ["ultracite/core", "ultracite/react"]
 }

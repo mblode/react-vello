@@ -1,5 +1,6 @@
-import { createElement, forwardRef } from 'react'
 import type { ForwardRefExoticComponent, ReactNode, RefAttributes } from 'react'
+import { createElement, forwardRef } from 'react'
+import type { HostType } from './runtime'
 import type {
   CanvasProps,
   ClipPathProps,
@@ -13,7 +14,6 @@ import type {
   RectProps,
   TextProps,
 } from './types'
-import type { HostType } from './runtime'
 
 type WithChildren<Props> = Props & { children?: ReactNode }
 

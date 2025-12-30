@@ -8,7 +8,9 @@ export interface NormalizedRgba {
 }
 
 export function paintToRgba(paint?: Paint): NormalizedRgba | null {
-  if (!paint) return null
+  if (!paint) {
+    return null
+  }
   if (paint.kind === 'solid') {
     return normalizeColor(paint.color)
   }
@@ -16,7 +18,9 @@ export function paintToRgba(paint?: Paint): NormalizedRgba | null {
 }
 
 export function normalizeColor(color: string | RgbaColor | undefined): NormalizedRgba | null {
-  if (!color) return null
+  if (!color) {
+    return null
+  }
   if (typeof color === 'string') {
     return parseHex(color)
   }
@@ -24,8 +28,12 @@ export function normalizeColor(color: string | RgbaColor | undefined): Normalize
 }
 
 export function colorToCss(color: string | RgbaColor | undefined): string | undefined {
-  if (!color) return undefined
-  if (typeof color === 'string') return color
+  if (!color) {
+    return undefined
+  }
+  if (typeof color === 'string') {
+    return color
+  }
   return rgbaToCss(normalizeRgbaColor(color))
 }
 
@@ -39,8 +47,12 @@ export function rgbaToCss(rgba: NormalizedRgba): string {
 
 function normalizeRgbaColor(color: RgbaColor): NormalizedRgba {
   const toChannel = (value: number) => {
-    if (!Number.isFinite(value)) return 0
-    if (value <= 1) return clamp01(value)
+    if (!Number.isFinite(value)) {
+      return 0
+    }
+    if (value <= 1) {
+      return clamp01(value)
+    }
     return clamp01(value / 255)
   }
   return {
@@ -52,14 +64,16 @@ function normalizeRgbaColor(color: RgbaColor): NormalizedRgba {
 }
 
 function parseHex(input: string): NormalizedRgba | null {
-  if (!input.startsWith('#')) return null
+  if (!input.startsWith('#')) {
+    return null
+  }
   const hex = input.slice(1)
   if (hex.length === 3 || hex.length === 4) {
     const [rChar, gChar, bChar, aChar] = hex.split('')
-    const r = parseInt(`${rChar}${rChar}`, 16)
-    const g = parseInt(`${gChar}${gChar}`, 16)
-    const b = parseInt(`${bChar}${bChar}`, 16)
-    const a = hex.length === 4 && aChar ? parseInt(`${aChar}${aChar}`, 16) : 255
+    const r = Number.parseInt(`${rChar}${rChar}`, 16)
+    const g = Number.parseInt(`${gChar}${gChar}`, 16)
+    const b = Number.parseInt(`${bChar}${bChar}`, 16)
+    const a = hex.length === 4 && aChar ? Number.parseInt(`${aChar}${aChar}`, 16) : 255
     return {
       r: r / 255,
       g: g / 255,
@@ -68,10 +82,10 @@ function parseHex(input: string): NormalizedRgba | null {
     }
   }
   if (hex.length === 6 || hex.length === 8) {
-    const r = parseInt(hex.slice(0, 2), 16)
-    const g = parseInt(hex.slice(2, 4), 16)
-    const b = parseInt(hex.slice(4, 6), 16)
-    const a = hex.length === 8 ? parseInt(hex.slice(6, 8), 16) : 255
+    const r = Number.parseInt(hex.slice(0, 2), 16)
+    const g = Number.parseInt(hex.slice(2, 4), 16)
+    const b = Number.parseInt(hex.slice(4, 6), 16)
+    const a = hex.length === 8 ? Number.parseInt(hex.slice(6, 8), 16) : 255
     return {
       r: r / 255,
       g: g / 255,
@@ -83,8 +97,14 @@ function parseHex(input: string): NormalizedRgba | null {
 }
 
 function clamp01(value: number): number {
-  if (!Number.isFinite(value)) return 0
-  if (value <= 0) return 0
-  if (value >= 1) return 1
+  if (!Number.isFinite(value)) {
+    return 0
+  }
+  if (value <= 0) {
+    return 0
+  }
+  if (value >= 1) {
+    return 1
+  }
   return value
 }

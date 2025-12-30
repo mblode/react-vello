@@ -13,7 +13,8 @@
     "paths": {
       "@/*": ["./src/*"]
     },
-    "types": ["vite/client", "@webgpu/types"]
+    "types": ["vite/client", "@webgpu/types"],
+    "strictNullChecks": true
   },
   "include": ["src", "vite-env.d.ts"]
 }
