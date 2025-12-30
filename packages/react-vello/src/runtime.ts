@@ -1,26 +1,6 @@
-import type {
-  CanvasDragEvent,
-  CanvasProps,
-  CanvasPointerEvent,
-  ClipPathProps,
-  GroupProps,
-  ImageProps,
-  LinearGradientProps,
-  MaskProps,
-  NodeRef,
-  NodeProps,
-  Paint,
-  PathProps,
-  RadialGradientProps,
-  RectProps,
-  SceneNodeHandle,
-  TextProps,
-  Mat3,
-  Vec2,
-} from './types'
 import { colorToCss, paintToRgba, rgbaToCss } from './color'
-import { resolveCornerRadius } from './geometry'
 import { encodeFrame } from './encoder'
+import { resolveCornerRadius } from './geometry'
 import { IDENTITY_MATRIX, invertTransform, multiplyTransforms, transformPoint } from './mat3'
 import {
   resolveHitSlop,
@@ -31,6 +11,29 @@ import {
   resolveRectSize,
   resolveTextOrigin,
 } from './nodeProps'
+import type {
+  CanvasDragEvent,
+  CanvasPointerEvent,
+  CanvasProps,
+  ClipPathProps,
+  GroupProps,
+  ImageProps,
+  LinearGradientProps,
+  MaskProps,
+  Mat3,
+  NodeProps,
+  NodeRef,
+  Paint,
+  PathProps,
+  RadialGradientProps,
+  RectProps,
+  SceneNodeHandle,
+  TextProps,
+  Vec2,
+} from './types'
+
+const LINE_SPLIT_REGEX = /\r?\n/
+const WHITESPACE_SPLIT_REGEX = /\s+/
 
 let strictModeEnabled = false
 
@@ -50,7 +53,7 @@ export type HostType =
   | 'Mask'
   | 'ClipPath'
 
-export type HostPropsMap = {
+export interface HostPropsMap {
   Canvas: CanvasProps
   Group: GroupProps
   Rect: RectProps
@@ -197,7 +200,9 @@ export function createCanvasContainer(canvas: HTMLCanvasElement, options: Contai
     resizeTarget: null,
     appliedStyleKeys: new Set(),
     enableSoftwareRenderer: () => {
-      if (container.softwareRendererActive) return
+      if (container.softwareRendererActive) {
+        return
+      }
       if (!container.context) {
         const ctx = canvas.getContext('2d')
         if (!ctx) {
@@ -301,7 +306,9 @@ function getNodeLocalTransform(node: SceneNode): Mat3 {
 }
 
 function getNodeWorldTransform(node: SceneNode | null): Mat3 {
-  if (!node) return IDENTITY_MATRIX
+  if (!node) {
+    return IDENTITY_MATRIX
+  }
   const chain: SceneNode[] = []
   let current: SceneNode | null = node
   while (current) {
@@ -335,7 +342,9 @@ function getNodeLocalBounds(node: SceneNode): { origin: Vec2; size: Vec2 } | nul
 
 function getNodeWorldBounds(node: SceneNode): { origin: Vec2; size: Vec2 } | null {
   const local = getNodeLocalBounds(node)
-  if (!local) return null
+  if (!local) {
+    return null
+  }
   const transform = getNodeWorldTransform(node)
   const [x, y] = local.origin
   const [w, h] = local.size
@@ -362,7 +371,9 @@ function getNodeWorldBounds(node: SceneNode): { origin: Vec2; size: Vec2 } | nul
 function getNodeLocalPosition(node: SceneNode, position: Vec2): Vec2 | null {
   const worldTransform = getNodeWorldTransform(node)
   const inverse = invertTransform(worldTransform)
-  if (!inverse) return null
+  if (!inverse) {
+    return null
+  }
   return transformPoint(inverse, position) as Vec2
 }
 
@@ -404,8 +415,12 @@ function resolveCanvasSize(container: CanvasContainer, props: CanvasProps): { wi
 }
 
 function ensureResizeObserver(container: CanvasContainer, target: Element): void {
-  if (typeof ResizeObserver === 'undefined') return
-  if (container.resizeObserver && container.resizeTarget === target) return
+  if (typeof ResizeObserver === 'undefined') {
+    return
+  }
+  if (container.resizeObserver && container.resizeTarget === target) {
+    return
+  }
   container.resizeObserver?.disconnect()
   container.resizeObserver = new ResizeObserver(() => {
     scheduleRender(container)
@@ -543,7 +558,7 @@ function renderContainer(container: CanvasContainer): void {
 }
 
 function updateHitRegions(container: CanvasContainer, root: SceneNode<'Canvas'>): void {
-  if (!root || !sceneHasPointerHandlers(root)) {
+  if (!(root && sceneHasPointerHandlers(root))) {
     container.hitRegions = []
     container.hitRegionMap.clear()
     return
@@ -707,9 +722,13 @@ function attachPointerListeners(container: CanvasContainer): void {
   canvas.addEventListener('wheel', wheelHandler, { passive: false })
 }
 
-function handlePointerEvent(container: CanvasContainer, nativeEvent: PointerLikeEvent, domType: PointerEventType): void {
+function handlePointerEvent(
+  container: CanvasContainer,
+  nativeEvent: PointerLikeEvent,
+  domType: PointerEventType,
+): void {
   const handlerKey = domEventToHandler[domType]
-  if (!handlerKey || !container.root) {
+  if (!(handlerKey && container.root)) {
     return
   }
 
@@ -844,7 +863,7 @@ function beginDragSession(
   pointerId: number,
 ): void {
   const targetProps = targetNode.props as NodeProps
-  if (!targetProps.draggable || !isNodeListening(targetProps)) {
+  if (!(targetProps.draggable && isNodeListening(targetProps))) {
     return
   }
   if (targetNode.draggingPointerId !== null) {
@@ -892,7 +911,7 @@ function updateDragSession(
 ): void {
   const node = session.node
   const nodeProps = node.props as NodeProps
-  if (!nodeProps.draggable || !isNodeListening(nodeProps)) {
+  if (!(nodeProps.draggable && isNodeListening(nodeProps))) {
     endDragSession(container, session, nativeEvent, position, true)
     return
   }
@@ -960,7 +979,9 @@ function endDragSession(
 function getParentLocalPosition(node: SceneNode, position: Vec2): Vec2 {
   const parentTransform = getNodeWorldTransform(node.parent)
   const inverse = invertTransform(parentTransform)
-  if (!inverse) return position
+  if (!inverse) {
+    return position
+  }
   return transformPoint(inverse, position) as Vec2
 }
 
@@ -1009,7 +1030,9 @@ function createDragEventState(params: {
       }
     },
     capturePointer(id: number) {
-      if (!(nativeEvent instanceof PointerEvent)) return
+      if (!(nativeEvent instanceof PointerEvent)) {
+        return
+      }
       const owner = currentTarget ?? target
       container.pointerCaptures.set(id, owner)
       if (typeof container.canvas.setPointerCapture === 'function') {
@@ -1021,7 +1044,9 @@ function createDragEventState(params: {
       }
     },
     releasePointerCapture(id: number) {
-      if (!(nativeEvent instanceof PointerEvent)) return
+      if (!(nativeEvent instanceof PointerEvent)) {
+        return
+      }
       const owner = currentTarget ?? target
       const captured = container.pointerCaptures.get(id)
       if (captured && captured === owner) {
@@ -1109,7 +1134,9 @@ function createPointerEventState(params: {
       }
     },
     capturePointer(id: number) {
-      if (!(nativeEvent instanceof PointerEvent)) return
+      if (!(nativeEvent instanceof PointerEvent)) {
+        return
+      }
       const owner = currentTarget ?? target
       container.pointerCaptures.set(id, owner)
       if (typeof container.canvas.setPointerCapture === 'function') {
@@ -1121,7 +1148,9 @@ function createPointerEventState(params: {
       }
     },
     releasePointerCapture(id: number) {
-      if (!(nativeEvent instanceof PointerEvent)) return
+      if (!(nativeEvent instanceof PointerEvent)) {
+        return
+      }
       const owner = currentTarget ?? target
       const captured = container.pointerCaptures.get(id)
       if (captured && captured === owner) {
@@ -1183,7 +1212,9 @@ function updateHoverPath(
 
   for (let i = prevPath.length - 1; i >= shared; i -= 1) {
     const leaveNode = prevPath[i]
-    if (!leaveNode) continue
+    if (!leaveNode) {
+      continue
+    }
     dispatchDirectPointerEvent(
       container,
       leaveNode,
@@ -1198,7 +1229,9 @@ function updateHoverPath(
 
   for (let i = shared; i < nextPath.length; i += 1) {
     const enterNode = nextPath[i]
-    if (!enterNode) continue
+    if (!enterNode) {
+      continue
+    }
     dispatchDirectPointerEvent(
       container,
       enterNode,
@@ -1220,13 +1253,17 @@ function updateHoverPath(
 
 function clearHoverPath(container: CanvasContainer, pointerId: number, nativeEvent: PointerLikeEvent): void {
   const previous = container.hoverStates.get(pointerId)
-  if (!previous) return
+  if (!previous) {
+    return
+  }
   container.hoverStates.delete(pointerId)
   const path = previous.path
   const position = getPointerPosition(container.canvas, nativeEvent)
   for (let i = path.length - 1; i >= 0; i -= 1) {
     const leaveNode = path[i]
-    if (!leaveNode) continue
+    if (!leaveNode) {
+      continue
+    }
     dispatchDirectPointerEvent(
       container,
       leaveNode,
@@ -1250,7 +1287,9 @@ function dispatchDirectPointerEvent(
   position: Vec2,
   localPosition: Vec2,
 ): void {
-  if (!node) return
+  if (!node) {
+    return
+  }
   const handler = (node.props as Partial<Record<keyof NodeProps, unknown>>)[handlerKey]
   if (typeof handler !== 'function') {
     return
@@ -1270,7 +1309,9 @@ function dispatchDirectPointerEvent(
 }
 
 function buildNodePath(node: SceneNode | null): SceneNode[] {
-  if (!node) return []
+  if (!node) {
+    return []
+  }
   const path: SceneNode[] = []
   let current: SceneNode | null = node
   while (current) {
@@ -1281,13 +1322,12 @@ function buildNodePath(node: SceneNode | null): SceneNode[] {
   return path
 }
 
-function findHitRegionAtPoint(
-  regions: HitRegion[],
-  point: Vec2,
-): { region: HitRegion; localPoint: Vec2 } | null {
+function findHitRegionAtPoint(regions: HitRegion[], point: Vec2): { region: HitRegion; localPoint: Vec2 } | null {
   for (let i = regions.length - 1; i >= 0; i -= 1) {
     const region = regions[i]
-    if (!region) continue
+    if (!region) {
+      continue
+    }
     const local = getLocalPointForRegion(region, point)
     if (local) {
       return { region, localPoint: local }
@@ -1298,9 +1338,13 @@ function findHitRegionAtPoint(
 
 function getLocalPointForRegion(region: HitRegion, point: Vec2, skipBounds = false): Vec2 | null {
   const inverse = invertTransform(region.transform)
-  if (!inverse) return null
+  if (!inverse) {
+    return null
+  }
   const local = transformPoint(inverse, point) as Vec2
-  if (skipBounds) return local
+  if (skipBounds) {
+    return local
+  }
 
   switch (region.kind) {
     case 'Rect':
@@ -1377,7 +1421,9 @@ function renderNode(ctx: CanvasRenderingContext2D, node: SceneNode, state: Rende
 }
 
 function renderGroup(ctx: CanvasRenderingContext2D, node: SceneNode<'Group'>, parentState: RenderState): void {
-  if (node.props.visible === false) return
+  if (node.props.visible === false) {
+    return
+  }
 
   ctx.save()
   applyCanvasTransform(ctx, resolveNodeTransform(node.props, node.dragOffset))
@@ -1392,7 +1438,9 @@ function renderGroup(ctx: CanvasRenderingContext2D, node: SceneNode<'Group'>, pa
 }
 
 function renderRect(ctx: CanvasRenderingContext2D, node: SceneNode<'Rect'>, parentState: RenderState): void {
-  if (node.props.visible === false) return
+  if (node.props.visible === false) {
+    return
+  }
 
   ctx.save()
   applyCanvasTransform(ctx, resolveNodeTransform(node.props, node.dragOffset))
@@ -1422,7 +1470,9 @@ function renderRect(ctx: CanvasRenderingContext2D, node: SceneNode<'Rect'>, pare
 }
 
 function renderPath(ctx: CanvasRenderingContext2D, node: SceneNode<'Path'>, parentState: RenderState): void {
-  if (node.props.visible === false) return
+  if (node.props.visible === false) {
+    return
+  }
 
   ctx.save()
   applyCanvasTransform(ctx, resolveNodeTransform(node.props, node.dragOffset))
@@ -1459,11 +1509,15 @@ function renderPath(ctx: CanvasRenderingContext2D, node: SceneNode<'Path'>, pare
 }
 
 function renderText(ctx: CanvasRenderingContext2D, node: SceneNode<'Text'>, parentState: RenderState): void {
-  if (node.props.visible === false) return
+  if (node.props.visible === false) {
+    return
+  }
 
   const { text, font, align, maxWidth } = node.props
   const origin = resolveTextOrigin(node.props)
-  if (!text) return
+  if (!text) {
+    return
+  }
 
   ctx.save()
   applyCanvasTransform(ctx, resolveNodeTransform(node.props, node.dragOffset))
@@ -1498,10 +1552,14 @@ function renderText(ctx: CanvasRenderingContext2D, node: SceneNode<'Text'>, pare
 }
 
 function applyStroke(ctx: CanvasRenderingContext2D, stroke: RectProps['stroke']): void {
-  if (!stroke) return
+  if (!stroke) {
+    return
+  }
 
   const strokeStyle = resolvePaint(stroke.paint)
-  if (!strokeStyle) return
+  if (!strokeStyle) {
+    return
+  }
 
   ctx.strokeStyle = strokeStyle
   ctx.lineWidth = stroke.width
@@ -1516,13 +1574,17 @@ function applyStroke(ctx: CanvasRenderingContext2D, stroke: RectProps['stroke'])
 }
 
 function applyCanvasTransform(ctx: CanvasRenderingContext2D, transform?: Mat3): void {
-  if (!transform) return
+  if (!transform) {
+    return
+  }
   const [a, b, c, d, e, f] = transform
   ctx.transform(a, b, c, d, e, f)
 }
 
 function resolvePaint(paint?: Paint): string | undefined {
-  if (!paint) return undefined
+  if (!paint) {
+    return undefined
+  }
   if (paint.kind === 'solid') {
     const rgba = paintToRgba(paint)
     if (rgba) {
@@ -1543,7 +1605,7 @@ function wrapTextLines(
   maxWidth?: number,
 ): { text: string; width: number }[] {
   const lines: { text: string; width: number }[] = []
-  const rawLines = text.split(/\r?\n/)
+  const rawLines = text.split(LINE_SPLIT_REGEX)
   const wrap = Boolean(maxWidth && maxWidth > 0)
 
   for (const rawLine of rawLines) {
@@ -1553,7 +1615,7 @@ function wrapTextLines(
       continue
     }
 
-    const words = rawLine.trim().split(/\s+/).filter(Boolean)
+    const words = rawLine.trim().split(WHITESPACE_SPLIT_REGEX).filter(Boolean)
     if (words.length === 0) {
       lines.push({ text: '', width: 0 })
       continue

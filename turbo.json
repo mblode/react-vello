@@ -4,7 +4,12 @@
   "tasks": {
     "build": {
       "dependsOn": ["^build"],
-      "outputs": ["dist/**", "lib/**", "pkg/**", "target/wasm32-unknown-unknown/**"],
+      "outputs": [
+        "dist/**",
+        "lib/**",
+        "pkg/**",
+        "target/wasm32-unknown-unknown/**"
+      ],
       "env": ["NODE_ENV"]
     },
     "dev": {

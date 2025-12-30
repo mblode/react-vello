@@ -1,5 +1,5 @@
-import type { ImageProps, Mat3, NodeProps, RectProps, TextProps, Vec2 } from './types'
 import { IDENTITY_MATRIX, multiplyTransforms } from './mat3'
+import type { ImageProps, Mat3, NodeProps, RectProps, TextProps, Vec2 } from './types'
 
 const ZERO_VEC2: Vec2 = [0, 0]
 
@@ -25,7 +25,9 @@ export function resolveRectOrigin(props: RectProps): Vec2 {
 }
 
 export function resolveRectSize(props: RectProps): Vec2 {
-  if (props.size) return props.size
+  if (props.size) {
+    return props.size
+  }
   const width = props.width ?? 0
   const height = props.height ?? 0
   return [width, height]
@@ -40,14 +42,18 @@ export function resolveImageOrigin(props: ImageProps): Vec2 {
 }
 
 export function resolveImageSize(props: ImageProps): Vec2 {
-  if (props.size) return props.size
+  if (props.size) {
+    return props.size
+  }
   const width = props.width ?? 0
   const height = props.height ?? 0
   return [width, height]
 }
 
 export function resolveHitSlop(hitSlop?: number | Vec2): Vec2 {
-  if (!hitSlop) return ZERO_VEC2
+  if (!hitSlop) {
+    return ZERO_VEC2
+  }
   if (typeof hitSlop === 'number') {
     return [hitSlop, hitSlop]
   }
@@ -65,7 +71,9 @@ function resolveShorthandTransform(props: NodeProps): Mat3 | null {
     props.offsetX !== undefined ||
     props.offsetY !== undefined
 
-  if (!hasShorthand) return null
+  if (!hasShorthand) {
+    return null
+  }
 
   const x = props.x ?? 0
   const y = props.y ?? 0

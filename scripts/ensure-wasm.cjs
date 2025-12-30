@@ -1,3 +1,4 @@
+'use strict'
 const { execSync } = require('node:child_process')
 const fs = require('node:fs')
 const path = require('node:path')
@@ -32,9 +33,7 @@ const ensurePkgGitignore = () => {
     return
   }
 
-  const current = fs.existsSync(pkgGitignorePath)
-    ? fs.readFileSync(pkgGitignorePath, 'utf8')
-    : ''
+  const current = fs.existsSync(pkgGitignorePath) ? fs.readFileSync(pkgGitignorePath, 'utf8') : ''
 
   if (current !== pkgGitignoreContents) {
     fs.writeFileSync(pkgGitignorePath, pkgGitignoreContents, 'utf8')
@@ -62,14 +61,12 @@ if (missing.length === 0) {
   process.exit(0)
 }
 
-const missingList = missing
-  .map((file) => `- ${path.relative(repoRoot, file)}`)
-  .join('\n')
+const missingList = missing.map((file) => `- ${path.relative(repoRoot, file)}`).join('\n')
 
 if (process.env.VERCEL) {
   console.error(
     `[rvello] Missing wasm artifacts:\n${missingList}\n` +
-      '[rvello] Run "pnpm -w wasm:build" locally and commit crates/rvello/pkg.'
+      '[rvello] Run "pnpm -w wasm:build" locally and commit crates/rvello/pkg.',
   )
   process.exit(1)
 }

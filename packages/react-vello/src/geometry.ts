@@ -1,8 +1,12 @@
 import type { RectProps, Vec2 } from './types'
 
 export function resolveCornerRadius(radius: RectProps['radius'], width: number, height: number): number {
-  if (!radius) return 0
-  if (typeof radius === 'number') return clampRadius(radius, width, height)
+  if (!radius) {
+    return 0
+  }
+  if (typeof radius === 'number') {
+    return clampRadius(radius, width, height)
+  }
 
   if (Array.isArray(radius)) {
     const first = radius[0]

@@ -1,9 +1,9 @@
-import type { CanvasProps, Mat3, Paint } from './types'
-import type { CanvasContainer, SceneNode } from './runtime'
-import { paintToRgba, type NormalizedRgba } from './color'
+import { type NormalizedRgba, paintToRgba } from './color'
 import { resolveCornerRadius } from './geometry'
 import { IDENTITY_MATRIX, multiplyTransforms } from './mat3'
 import { resolveNodeTransform, resolveRectOrigin, resolveRectSize, resolveTextOrigin } from './nodeProps'
+import type { CanvasContainer, SceneNode } from './runtime'
+import type { CanvasProps, Mat3, Paint } from './types'
 
 const OpCode = {
   BeginFrame: 1,
@@ -127,7 +127,7 @@ function encodeRect(node: SceneNode<'Rect'>, writer: BinaryWriter, state: Encode
 function encodePath(node: SceneNode<'Path'>, writer: BinaryWriter, state: EncoderState): void {
   const props = node.props
   const fill = resolveFill(props.fill)
-  if (!fill && !props.stroke) {
+  if (!(fill || props.stroke)) {
     return
   }
 
@@ -218,13 +218,16 @@ function writeMat3(writer: BinaryWriter, mat: Mat3): void {
 
 function resolveFill(paint?: Paint): NormalizedRgba | null {
   const rgba = paintToRgba(paint)
-  if (!rgba) return null
+  if (!rgba) {
+    return null
+  }
   return rgba
 }
 
-
 function normalizeBackground(background?: CanvasProps['backgroundColor']): Paint | undefined {
-  if (!background) return undefined
+  if (!background) {
+    return undefined
+  }
   if (typeof background === 'string') {
     return { kind: 'solid', color: background }
   }

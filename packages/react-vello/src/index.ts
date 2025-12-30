@@ -1,20 +1,21 @@
 import { createContext, type ReactNode } from 'react'
 import Reconciler from 'react-reconciler'
 import { DefaultEventPriority, LegacyRoot, NoEventPriority } from 'react-reconciler/constants'
-import type { CanvasContext } from './types'
 import {
   type CanvasContainer,
+  createCanvasContainer,
+  createSceneNode,
   type HostProps,
   type HostType,
   type SceneNode,
-  createCanvasContainer,
-  createSceneNode,
-  setStrictMode,
   sanitizeProps,
   scheduleRender,
   setRootNode,
+  setStrictMode,
 } from './runtime'
+import type { CanvasContext } from './types'
 import { createWasmRenderer, type WasmRenderer } from './wasmBridge'
+
 export * from './components'
 export * from './types'
 
@@ -127,7 +128,7 @@ function didLayoutPropsChange(prevProps: HostProps, nextProps: HostProps): boole
   for (const key of layoutPropKeys) {
     const prevHas = Object.prototype.hasOwnProperty.call(prevProps, key)
     const nextHas = Object.prototype.hasOwnProperty.call(nextProps, key)
-    if (!prevHas && !nextHas) {
+    if (!(prevHas || nextHas)) {
       continue
     }
     const prevValue = (prevProps as Record<string, unknown>)[key]
@@ -153,7 +154,9 @@ const hostConfig = {
   supportsPersistence: false,
   supportsHydration: false,
   shouldSetTextContent(type: HostType, props: HostProps & { children?: unknown }) {
-    if (type !== 'Text') return false
+    if (type !== 'Text') {
+      return false
+    }
     return hasTextChildren(props.children)
   },
   createInstance(
@@ -175,21 +178,29 @@ const hostConfig = {
     return text
   },
   appendInitialChild(parent: Instance, child: Instance | TextInstance) {
-    if (typeof child === 'string') return
+    if (typeof child === 'string') {
+      return
+    }
     parent.children.push(child)
     child.parent = parent
   },
   appendChild(parent: Instance, child: Instance | TextInstance) {
-    if (typeof child === 'string') return
+    if (typeof child === 'string') {
+      return
+    }
     parent.children.push(child)
     child.parent = parent
   },
   appendChildToContainer(container: CanvasContainer, child: Instance | TextInstance) {
-    if (typeof child === 'string') return
+    if (typeof child === 'string') {
+      return
+    }
     setRootNode(container, child)
   },
   insertBefore(parent: Instance, child: Instance | TextInstance, beforeChild: Instance | TextInstance) {
-    if (typeof child === 'string' || typeof beforeChild === 'string') return
+    if (typeof child === 'string' || typeof beforeChild === 'string') {
+      return
+    }
     const index = parent.children.indexOf(beforeChild)
     if (index === -1) {
       parent.children.push(child)
@@ -203,11 +214,15 @@ const hostConfig = {
     child: Instance | TextInstance,
     _beforeChild: Instance | TextInstance,
   ) {
-    if (typeof child === 'string') return
+    if (typeof child === 'string') {
+      return
+    }
     setRootNode(container, child)
   },
   removeChild(parent: Instance, child: Instance | TextInstance) {
-    if (typeof child === 'string') return
+    if (typeof child === 'string') {
+      return
+    }
     const index = parent.children.indexOf(child)
     if (index >= 0) {
       parent.children.splice(index, 1)
@@ -215,7 +230,9 @@ const hostConfig = {
     }
   },
   removeChildFromContainer(container: CanvasContainer, child: Instance | TextInstance) {
-    if (typeof child === 'string') return
+    if (typeof child === 'string') {
+      return
+    }
     if (container.root === child) {
       setRootNode(container, null)
       child.parent = null
