@@ -32,11 +32,11 @@
     "lint-staged": "^16.2.7",
     "turbo": "^2.1.3",
     "typescript": "~5.9.3",
-    "ultracite": "6.5.0"
+    "ultracite": "^7.0.5"
   },
   "lint-staged": {
     "*.{js,jsx,ts,tsx,json,jsonc,css,scss,md,mdx}": [
-      "pnpm dlx ultracite fix"
+      "npx ultracite fix"
     ]
   }
 }

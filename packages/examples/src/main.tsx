@@ -1,6 +1,14 @@
 import "./style.css";
 import type Konva from "konva";
-import { type MouseEvent, type ReactNode, StrictMode, useEffect, useRef, useState } from "react";
+import {
+  type MouseEvent,
+  type ReactNode,
+  StrictMode,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { createRoot } from "react-dom/client";
 import { Circle, Layer, Stage } from "react-konva";
 import {
@@ -18,7 +26,9 @@ import {
 import { Button } from "@/components/ui/button";
 import { Slider } from "@/components/ui/slider";
 
-type SupportStatus = { ok: true } | { ok: false; reason: string; hint?: string };
+type SupportStatus =
+  | { ok: true }
+  | { ok: false; reason: string; hint?: string };
 
 interface Point {
   x: number;
@@ -37,7 +47,13 @@ const PARTICLE_COUNT_MIN = 1000;
 const PARTICLE_COUNT_MAX = 30_000;
 const PARTICLE_COUNT_STEP = 500;
 const PARTICLE_COUNT_DEFAULT = 8000;
-const PARTICLE_PALETTE = ["#38bdf8", "#f472b6", "#facc15", "#a7f3d0", "#c4b5fd"];
+const PARTICLE_PALETTE = [
+  "#38bdf8",
+  "#f472b6",
+  "#facc15",
+  "#a7f3d0",
+  "#c4b5fd",
+];
 const STRESS_BG = "#05070d";
 
 interface Particle {
@@ -94,8 +110,11 @@ async function detectWebGPU(): Promise<SupportStatus> {
   }
 
   try {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const context = (document.createElement("canvas").getContext as any)("webgpu");
+    const getContext = document.createElement("canvas")
+      .getContext as unknown as (
+      contextId: "webgpu"
+    ) => GPUCanvasContext | null;
+    const context = getContext("webgpu");
     if (!context) {
       return {
         ok: false,
@@ -138,7 +157,9 @@ function useViewportSize() {
 }
 
 function usePathname() {
-  const [pathname, setPathname] = useState(() => (typeof window === "undefined" ? "/" : window.location.pathname));
+  const [pathname, setPathname] = useState(() =>
+    typeof window === "undefined" ? "/" : window.location.pathname
+  );
 
   useEffect(() => {
     if (typeof window === "undefined") {
@@ -169,11 +190,22 @@ function lerp(start: number, end: number, t: number): number {
   return start + (end - start) * t;
 }
 
-function buildCubicPath(start: Point, c1: Point, c2: Point, end: Point): string {
+function buildCubicPath(
+  start: Point,
+  c1: Point,
+  c2: Point,
+  end: Point
+): string {
   return `M ${start.x} ${start.y} C ${c1.x} ${c1.y}, ${c2.x} ${c2.y}, ${end.x} ${end.y}`;
 }
 
-function getCubicPoint(t: number, p0: Point, p1: Point, p2: Point, p3: Point): Point {
+function getCubicPoint(
+  t: number,
+  p0: Point,
+  p1: Point,
+  p2: Point,
+  p3: Point
+): Point {
   const a = { x: lerp(p0.x, p1.x, t), y: lerp(p0.y, p1.y, t) };
   const b = { x: lerp(p1.x, p2.x, t), y: lerp(p1.y, p2.y, t) };
   const c = { x: lerp(p2.x, p3.x, t), y: lerp(p2.y, p3.y, t) };
@@ -190,7 +222,10 @@ function App() {
 
   const size = useViewportSize();
   const pathname = usePathname();
-  const normalizedPath = pathname !== "/" && pathname.endsWith("/") ? pathname.slice(0, -1) : pathname;
+  const normalizedPath =
+    pathname !== "/" && pathname.endsWith("/")
+      ? pathname.slice(0, -1)
+      : pathname;
   const isReactVelloTest = normalizedPath === STRESS_TEST_REACT_VELLO_PATH;
   const isReactDomTest = normalizedPath === STRESS_TEST_REACT_DOM_PATH;
   const isReactKonvaTest = normalizedPath === STRESS_TEST_REACT_KONVA_PATH;
@@ -256,12 +291,19 @@ function App() {
           onFps={setVelloFps}
           particleCount={particleCount}
           width={size.width}
-        />,
+        />
       );
       return;
     }
     root.render(<DemoScene height={size.height} width={size.width} />);
-  }, [status?.ok, size.width, size.height, isReactVelloTest, isVelloPage, particleCount]);
+  }, [
+    status?.ok,
+    size.width,
+    size.height,
+    isReactVelloTest,
+    isVelloPage,
+    particleCount,
+  ]);
 
   const handleParticleCountChange = (value: number) => {
     setParticleCount(clamp(value, PARTICLE_COUNT_MIN, PARTICLE_COUNT_MAX));
@@ -291,22 +333,39 @@ function App() {
         />
       ) : null}
       <div className="pointer-events-none absolute top-4 right-4 left-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div className="font-semibold text-foreground/90 text-sm tracking-wide">React Vello Demo</div>
+        <div className="font-semibold text-foreground/90 text-sm tracking-wide">
+          React Vello Demo
+        </div>
         <div className="flex flex-wrap items-center gap-2">
           <AppLink isActive={isDemo} to="/">
             Demo
           </AppLink>
-          <AppLink isActive={isReactVelloTest} to={STRESS_TEST_REACT_VELLO_PATH}>
+          <AppLink
+            isActive={isReactVelloTest}
+            to={STRESS_TEST_REACT_VELLO_PATH}
+          >
             React Vello
           </AppLink>
-          <AppLink isActive={isReactKonvaTest} to={STRESS_TEST_REACT_KONVA_PATH}>
+          <AppLink
+            isActive={isReactKonvaTest}
+            to={STRESS_TEST_REACT_KONVA_PATH}
+          >
             React Konva
           </AppLink>
           <AppLink isActive={isReactDomTest} to={STRESS_TEST_REACT_DOM_PATH}>
             React DOM
           </AppLink>
-          <Button asChild className="pointer-events-auto" size="sm" variant="outline">
-            <a href="https://github.com/mblode/react-vello" rel="noreferrer" target="_blank">
+          <Button
+            asChild
+            className="pointer-events-auto"
+            size="sm"
+            variant="outline"
+          >
+            <a
+              href="https://github.com/mblode/react-vello"
+              rel="noreferrer"
+              target="_blank"
+            >
               GitHub
             </a>
           </Button>
@@ -372,8 +431,17 @@ function AppLink({ to, isActive, children }: AppLinkProps) {
   };
 
   return (
-    <Button asChild className="pointer-events-auto" size="sm" variant={isActive ? "secondary" : "ghost"}>
-      <a aria-current={isActive ? "page" : undefined} href={to} onClick={handleClick}>
+    <Button
+      asChild
+      className="pointer-events-auto"
+      size="sm"
+      variant={isActive ? "secondary" : "ghost"}
+    >
+      <a
+        aria-current={isActive ? "page" : undefined}
+        href={to}
+        onClick={handleClick}
+      >
         {children}
       </a>
     </Button>
@@ -404,13 +472,17 @@ function ParticleStressHud({
 
   return (
     <div className="absolute bottom-4 left-4 z-10 w-[min(380px,92vw)] rounded-xl border border-border/60 bg-card/90 p-4 text-foreground text-sm shadow-xl backdrop-blur">
-      <div className="font-semibold text-[10px] text-muted-foreground uppercase tracking-[0.2em]">{title}</div>
+      <div className="font-semibold text-[10px] text-muted-foreground uppercase tracking-[0.2em]">
+        {title}
+      </div>
       <div className="mt-2 font-semibold text-lg">{subtitle}</div>
       <div className="mt-1 text-muted-foreground text-xs">{description}</div>
       <div className="mt-4 rounded-lg border border-border/60 bg-background/60 p-3">
         <div className="flex items-center justify-between text-[11px] text-muted-foreground uppercase tracking-wide">
           <span>{countLabel}</span>
-          <span className="font-semibold text-foreground text-sm">{formattedCount}</span>
+          <span className="font-semibold text-foreground text-sm">
+            {formattedCount}
+          </span>
         </div>
         <Slider
           aria-label="Particle count"
@@ -425,16 +497,22 @@ function ParticleStressHud({
           step={PARTICLE_COUNT_STEP}
           value={[count]}
         />
-        <div className="mt-2 text-[11px] text-muted-foreground">More particles push fill-rate and blending.</div>
+        <div className="mt-2 text-[11px] text-muted-foreground">
+          More particles push fill-rate and blending.
+        </div>
       </div>
       <div className="mt-4 grid grid-cols-2 gap-3">
         <div className="rounded-lg border border-border/60 bg-background/60 p-3">
-          <div className="text-[10px] text-muted-foreground uppercase tracking-wide">FPS</div>
+          <div className="text-[10px] text-muted-foreground uppercase tracking-wide">
+            FPS
+          </div>
           <div className="mt-1 font-semibold text-lg">{fpsLabel}</div>
           <div className="text-[10px] text-muted-foreground">avg</div>
         </div>
         <div className="rounded-lg border border-border/60 bg-background/60 p-3">
-          <div className="text-[10px] text-muted-foreground uppercase tracking-wide">{countLabel}</div>
+          <div className="text-[10px] text-muted-foreground uppercase tracking-wide">
+            {countLabel}
+          </div>
           <div className="mt-1 font-semibold text-lg">{formattedCount}</div>
           <div className="text-[10px] text-muted-foreground">active</div>
         </div>
@@ -466,7 +544,13 @@ function getParticlePulse(timeSeconds: number, twinkle: number): number {
   return 0.6 + 0.4 * Math.sin(timeSeconds * 2 + twinkle);
 }
 
-function useParticleSimulation({ width, height, particleCount, onFps, onFrame }: ParticleSimulationOptions) {
+function useParticleSimulation({
+  width,
+  height,
+  particleCount,
+  onFps,
+  onFrame,
+}: ParticleSimulationOptions) {
   const particlesRef = useRef<Particle[]>([]);
   const boundsRef = useRef({ width, height });
   const onFpsRef = useRef(onFps);
@@ -521,8 +605,7 @@ function useParticleSimulation({ width, height, particleCount, onFps, onFrame }:
       const { width: currentWidth, height: currentHeight } = boundsRef.current;
       if (currentWidth > 0 && currentHeight > 0) {
         const particles = particlesRef.current;
-        for (let i = 0; i < particles.length; i += 1) {
-          const particle = particles[i];
+        for (const particle of particles) {
           if (!particle) {
             continue;
           }
@@ -561,9 +644,22 @@ interface ReactDomStressTestProps {
   onFps?: (fps: number) => void;
 }
 
-function ReactDomStressTest({ width, height, particleCount, onFps }: ReactDomStressTestProps) {
+function ReactDomStressTest({
+  width,
+  height,
+  particleCount,
+  onFps,
+}: ReactDomStressTestProps) {
   const domElementsRef = useRef<Array<HTMLDivElement | null>>([]);
   const domReadyRef = useRef<boolean[]>([]);
+  const domParticleKeys = useMemo(
+    () =>
+      Array.from(
+        { length: particleCount },
+        (_, index) => `dom-particle-${index}`
+      ),
+    [particleCount]
+  );
 
   useEffect(() => {
     const ready = domReadyRef.current;
@@ -612,11 +708,14 @@ function ReactDomStressTest({ width, height, particleCount, onFps }: ReactDomStr
   });
 
   return (
-    <div className="pointer-events-none absolute inset-0" style={{ backgroundColor: STRESS_BG }}>
-      {Array.from({ length: particleCount }).map((_, index) => (
+    <div
+      className="pointer-events-none absolute inset-0"
+      style={{ backgroundColor: STRESS_BG }}
+    >
+      {domParticleKeys.map((key, index) => (
         <div
           className="absolute"
-          key={`dom-particle-${index}`}
+          key={key}
           ref={(element) => {
             domElementsRef.current[index] = element;
           }}
@@ -633,9 +732,19 @@ interface ReactKonvaStressTestProps {
   onFps?: (fps: number) => void;
 }
 
-function ReactKonvaStressTest({ width, height, particleCount, onFps }: ReactKonvaStressTestProps) {
+function ReactKonvaStressTest({
+  width,
+  height,
+  particleCount,
+  onFps,
+}: ReactKonvaStressTestProps) {
   const circleNodesRef = useRef<Array<Konva.Circle | null>>([]);
   const layerRef = useRef<Konva.Layer | null>(null);
+  const particleKeys = useMemo(
+    () =>
+      Array.from({ length: particleCount }, (_, index) => `particle-${index}`),
+    [particleCount]
+  );
 
   useEffect(() => {
     circleNodesRef.current.length = particleCount;
@@ -668,13 +777,16 @@ function ReactKonvaStressTest({ width, height, particleCount, onFps }: ReactKonv
   });
 
   return (
-    <div className="pointer-events-none absolute inset-0" style={{ backgroundColor: STRESS_BG }}>
+    <div
+      className="pointer-events-none absolute inset-0"
+      style={{ backgroundColor: STRESS_BG }}
+    >
       <Stage className="absolute inset-0" height={height} width={width}>
         <Layer listening={false} ref={layerRef}>
-          {Array.from({ length: particleCount }).map((_, index) => (
+          {particleKeys.map((key, index) => (
             <Circle
               fill={getParticleColor(index)}
-              key={`particle-${index}`}
+              key={key}
               listening={false}
               opacity={0}
               perfectDrawEnabled={false}
@@ -700,8 +812,19 @@ interface ReactVelloStressTestProps {
   context?: CanvasContext;
 }
 
-function ReactVelloStressTest({ width, height, particleCount, onFps, context }: ReactVelloStressTestProps) {
+function ReactVelloStressTest({
+  width,
+  height,
+  particleCount,
+  onFps,
+  context,
+}: ReactVelloStressTestProps) {
   const nodeRefs = useRef<Array<MutableRectNode | null>>([]);
+  const particleKeys = useMemo(
+    () =>
+      Array.from({ length: particleCount }, (_, index) => `particle-${index}`),
+    [particleCount]
+  );
   const contextRef = useRef<CanvasContext | null>(context ?? null);
 
   useEffect(() => {
@@ -752,10 +875,10 @@ function ReactVelloStressTest({ width, height, particleCount, onFps, context }: 
   return (
     <Canvas backgroundColor={STRESS_BG} height={height} width={width}>
       <Group listening={false}>
-        {Array.from({ length: particleCount }).map((_, index) => (
+        {particleKeys.map((key, index) => (
           <Rect
             fill={{ kind: "solid", color: getParticleColor(index) }}
-            key={`particle-${index}`}
+            key={key}
             opacity={0}
             origin={[0, 0]}
             radius={999}
@@ -876,9 +999,20 @@ function DemoScene({ width, height }: { width: number; height: number }) {
     const isActive = activeHandle === id;
     const isHovered = hoveredHandle === id;
     const baseRadius = isAnchor ? 9 : 7;
-    const ringRadius = baseRadius + (isActive ? 7 : isHovered ? 5 : 3);
+    let ringBoost = 3;
+    if (isActive) {
+      ringBoost = 7;
+    } else if (isHovered) {
+      ringBoost = 5;
+    }
+    const ringRadius = baseRadius + ringBoost;
     const color = isAnchor ? "#38bdf8" : "#a78bfa";
-    const ringOpacity = isActive ? 0.38 : isHovered ? 0.25 : 0.16;
+    let ringOpacity = 0.16;
+    if (isActive) {
+      ringOpacity = 0.38;
+    } else if (isHovered) {
+      ringOpacity = 0.25;
+    }
 
     return (
       <Group key={id}>
@@ -976,7 +1110,11 @@ function getParticleColor(index: number): string {
   return PARTICLE_PALETTE[index % PARTICLE_PALETTE.length] ?? "#38bdf8";
 }
 
-function createParticle(width: number, height: number, index: number): Particle {
+function createParticle(
+  width: number,
+  height: number,
+  index: number
+): Particle {
   const size = randomBetween(0.8, 2.6);
   const speed = randomBetween(120, 520);
   const drift = randomBetween(-35, 35);
@@ -1005,10 +1143,19 @@ function resetParticle(particle: Particle, width: number, height: number) {
   particle.opacity = randomBetween(0.4, 0.85);
 }
 
-function updateParticle(particle: Particle, delta: number, width: number, height: number) {
+function updateParticle(
+  particle: Particle,
+  delta: number,
+  width: number,
+  height: number
+) {
   particle.y += particle.speed * delta;
   particle.x += particle.drift * delta;
-  if (particle.y - particle.size > height + 60 || particle.x < -80 || particle.x > width + 80) {
+  if (
+    particle.y - particle.size > height + 60 ||
+    particle.x < -80 ||
+    particle.x > width + 80
+  ) {
     resetParticle(particle, width, height);
   }
 }
@@ -1027,7 +1174,7 @@ function main() {
   root.render(
     <StrictMode>
       <App />
-    </StrictMode>,
+    </StrictMode>
   );
 
   if (import.meta.hot) {
@@ -1037,4 +1184,4 @@ function main() {
   }
 }
 
-void main();
+main();
