@@ -106,10 +106,11 @@ function ensureCanvasContext(canvas?: HTMLCanvasElement): boolean {
   }
 
   try {
-    const getContext = target.getContext as unknown as (
-      contextId: "webgpu"
-    ) => GPUCanvasContext | null;
-    const context = getContext("webgpu");
+    const context = (
+      target.getContext as unknown as (
+        contextId: "webgpu"
+      ) => GPUCanvasContext | null
+    ).call(target, "webgpu");
     return Boolean(context);
   } catch {
     return false;

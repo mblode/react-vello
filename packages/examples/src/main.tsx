@@ -110,11 +110,12 @@ async function detectWebGPU(): Promise<SupportStatus> {
   }
 
   try {
-    const getContext = document.createElement("canvas")
-      .getContext as unknown as (
-      contextId: "webgpu"
-    ) => GPUCanvasContext | null;
-    const context = getContext("webgpu");
+    const canvas = document.createElement("canvas");
+    const context = (
+      canvas.getContext as unknown as (
+        contextId: "webgpu"
+      ) => GPUCanvasContext | null
+    ).call(canvas, "webgpu");
     if (!context) {
       return {
         ok: false,
