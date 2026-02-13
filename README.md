@@ -2,7 +2,9 @@
 
 # React Vello
 
-**Blazing fast React renderer powered by [Vello](https://github.com/linebender/vello)**
+**A React renderer powered by [Vello](https://github.com/linebender/vello), a Rust GPU renderer, via WASM + WebGPU**
+
+Draw shapes and text declaratively in React while Rust handles the rendering.
 
 <p align="center">
   <a href="https://www.npmjs.com/package/react-vello">
