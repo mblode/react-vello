@@ -76,3 +76,7 @@ root.render(
 ---
 
 <sub>Inspired by [react-three-fiber](https://github.com/pmndrs/react-three-fiber), [react-konva](https://github.com/konvajs/react-konva), and [react-pdf](https://github.com/diegomura/react-pdf).</sub>
+
+---
+
+Crafted by [<img src="https://matthewblode.com/avatar-sm.png" width="20" align="top" />](https://matthewblode.com) [Matthew Blode](https://matthewblode.com)
