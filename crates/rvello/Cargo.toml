@@ -20,5 +20,13 @@ skrifa = "0.37"
 wasm-bindgen = { version = "0.2.92", features = ["serde-serialize"] }
 wasm-bindgen-futures = "0.4"
 vello = { version = "0.6", default-features = false, features = ["wgpu"] }
-wgpu = { version = "26.0.1", default-features = false, features = ["wgsl", "webgpu"] }
-web-sys = { version = "0.3", features = ["HtmlCanvasElement", "OffscreenCanvas", "Window", "Document"] }
+wgpu = { version = "26.0.1", default-features = false, features = [
+  "wgsl",
+  "webgpu",
+] }
+web-sys = { version = "0.3", features = [
+  "HtmlCanvasElement",
+  "OffscreenCanvas",
+  "Window",
+  "Document",
+] }
