@@ -12,13 +12,17 @@
   --color-primary: hsl(var(--primary) / <alpha-value>);
   --color-primary-foreground: hsl(var(--primary-foreground) / <alpha-value>);
   --color-secondary: hsl(var(--secondary) / <alpha-value>);
-  --color-secondary-foreground: hsl(var(--secondary-foreground) / <alpha-value>);
+  --color-secondary-foreground: hsl(
+    var(--secondary-foreground) / <alpha-value>
+  );
   --color-muted: hsl(var(--muted) / <alpha-value>);
   --color-muted-foreground: hsl(var(--muted-foreground) / <alpha-value>);
   --color-accent: hsl(var(--accent) / <alpha-value>);
   --color-accent-foreground: hsl(var(--accent-foreground) / <alpha-value>);
   --color-destructive: hsl(var(--destructive) / <alpha-value>);
-  --color-destructive-foreground: hsl(var(--destructive-foreground) / <alpha-value>);
+  --color-destructive-foreground: hsl(
+    var(--destructive-foreground) / <alpha-value>
+  );
   --color-border: hsl(var(--border) / <alpha-value>);
   --color-input: hsl(var(--input) / <alpha-value>);
   --color-ring: hsl(var(--ring) / <alpha-value>);

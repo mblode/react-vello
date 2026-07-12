@@ -5,6 +5,7 @@ import {
   LegacyRoot,
   NoEventPriority,
 } from "react-reconciler/constants";
+
 import {
   type CanvasContainer,
   createCanvasContainer,
@@ -492,8 +493,7 @@ export function createVelloRoot(
     (error, info) => {
       console.error("[rvello] recoverable error", error, info);
     },
-    () => undefined,
-    null
+    () => undefined
   );
 
   const context: CanvasContext = {
