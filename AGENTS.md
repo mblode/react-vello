@@ -2,15 +2,15 @@
 
 ## Project Structure & Module Organization
 - `packages/react-vello/` is the React renderer library; source lives in `packages/react-vello/src/`, with the public entry at `packages/react-vello/src/index.ts` and WASM bindings under `packages/react-vello/src/wasm/`.
-- `packages/examples/` is the Vite demo app; `index.html` is at the package root, the entry is `packages/examples/src/main.tsx`, and static assets live in `packages/examples/public/`.
+- `apps/web/` is the Next.js demo site served at `blode.co/react-vello`; routes live in `apps/web/app/`, shared scene and benchmark components in `apps/web/components/`, and static assets in `apps/web/public/`. `next.config.ts` sets `basePath: "/react-vello"`, so route paths in code carry no prefix — use `absoluteUrl()` from `apps/web/lib/routes.ts` for full URLs.
 - `crates/rvello/` contains the Rust/WASM renderer; build artifacts are copied into the library via `packages/react-vello/scripts/copy-wasm.cjs`.
 - `scripts/` holds shared workspace utilities such as `scripts/ensure-wasm.cjs`.
 - `dist/` folders are generated outputs; do not edit them by hand.
 
 ## Build, Test, and Development Commands
 - `pnpm dev` runs workspace dev tasks via Turborepo.
-- `pnpm -C packages/examples dev` starts the Vite WebGPU demo.
-- `pnpm -C packages/examples preview` serves the production build locally.
+- `pnpm -C apps/web dev` starts the Next.js WebGPU demo at `http://localhost:3000/react-vello`.
+- `pnpm -C apps/web build && pnpm -C apps/web start` serves the production build locally.
 - `pnpm -C packages/react-vello build` builds the library and copies WASM assets into `dist/`.
 - `pnpm build` runs all package builds (check-types + bundling).
 - `pnpm check-types` or `pnpm lint` runs TypeScript `--noEmit` checks across packages.

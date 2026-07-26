@@ -1,7 +1,7 @@
 {
-  "buildCommand": "pnpm build --filter @react-vello/examples...",
-  "installCommand": "pnpm install",
-  "outputDirectory": "packages/examples/dist",
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "framework": "nextjs",
+  "installCommand": "pnpm install --frozen-lockfile",
   "redirects": [
     {
       "source": "/",
@@ -14,12 +14,6 @@
       "destination": "https://blode.co/react-vello/:path*",
       "has": [{ "type": "host", "value": "react-vello.blode.co" }],
       "permanent": true
-    }
-  ],
-  "rewrites": [
-    {
-      "source": "/react-vello/:path*",
-      "destination": "/react-vello/index.html"
     }
   ]
 }
