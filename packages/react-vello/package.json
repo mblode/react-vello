@@ -25,7 +25,7 @@
     "access": "public"
   },
   "scripts": {
-    "build": "tsc --project tsconfig.json && node ./scripts/copy-wasm.cjs",
+    "build": "rm -rf dist tsconfig.tsbuildinfo && tsc --project tsconfig.json && node ./scripts/copy-wasm.cjs",
     "dev": "tsc --project tsconfig.json --watch",
     "prepack": "npm run build",
     "check-types": "tsc --project tsconfig.json --noEmit",
