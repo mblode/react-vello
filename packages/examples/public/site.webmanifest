@@ -2,7 +2,7 @@
   "name": "react-vello",
   "short_name": "react-vello",
   "start_url": "/react-vello",
-  "scope": "/react-vello/",
+  "scope": "/react-vello",
   "icons": [
     {
       "src": "/react-vello/web-app-manifest-192x192.png",
