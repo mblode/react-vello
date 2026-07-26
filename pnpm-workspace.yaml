@@ -1,4 +1,7 @@
 packages:
+  - "apps/*"
   - "packages/*"
 allowBuilds:
   lefthook: true
+  # Pulled in by Next.js for next/image optimisation, which this site does not use.
+  sharp: false

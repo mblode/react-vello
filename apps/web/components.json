@@ -1,16 +1,24 @@
 {
   "$schema": "https://ui.shadcn.com/schema.json",
   "style": "default",
-  "rsc": false,
+  "rsc": true,
   "tsx": true,
   "tailwind": {
-    "css": "src/style.css",
+    "config": "",
+    "css": "app/globals.css",
     "baseColor": "neutral",
     "cssVariables": true,
     "prefix": ""
   },
+  "iconLibrary": "blode-icons-react",
   "aliases": {
     "components": "@/components",
+    "ui": "@/components/ui",
+    "lib": "@/lib",
+    "hooks": "@/hooks",
     "utils": "@/lib/utils"
+  },
+  "registries": {
+    "@blode": "https://ui.blode.co/r/{name}.json"
   }
 }
