@@ -90,7 +90,7 @@ type SuspenseInstance = never;
 type HydratableInstance = never;
 type FormInstance = never;
 type PublicInstance = SceneNode;
-type HostContext = null;
+type HostContext = Record<string, never>;
 type ChildSet = never;
 type TimeoutHandle = number;
 type NoTimeout = number;
@@ -154,16 +154,22 @@ function didLayoutPropsChange(
   return false;
 }
 
+// The scene graph has no per-node host context, but React treats a null
+// context as "nothing was pushed" and its development build then throws
+// "Expected host context to exist" on every commit. Hand back a shared
+// sentinel instead, and return the parent unchanged so React skips the push.
+const rootHostContext: HostContext = Object.freeze({});
+
 const hostConfig = {
   getRootHostContext(_rootContainer: CanvasContainer): HostContext {
-    return null;
+    return rootHostContext;
   },
   getChildHostContext(
-    _parentHostContext: HostContext,
+    parentHostContext: HostContext,
     _type: HostType,
     _rootContainer: CanvasContainer
   ): HostContext {
-    return null;
+    return parentHostContext;
   },
   getPublicInstance(instance: Instance | TextInstance): PublicInstance {
     return instance as PublicInstance;
