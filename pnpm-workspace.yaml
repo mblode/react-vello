@@ -2,6 +2,8 @@ packages:
   - "apps/*"
   - "packages/*"
 allowBuilds:
+  # Pulled in by posthog-js; its postinstall only prints a funding banner.
+  core-js: false
   lefthook: true
   # Pulled in by Next.js for next/image optimisation, which this site does not use.
   sharp: false

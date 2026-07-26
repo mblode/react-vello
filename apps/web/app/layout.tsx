@@ -1,6 +1,5 @@
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
-import Script from "next/script";
 import type { ReactNode } from "react";
 
 import { SiteFooter } from "@/components/site-footer";
@@ -8,8 +7,6 @@ import { SiteHeader } from "@/components/site-header";
 import { absoluteUrl, DEMO_PATH, SITE_ORIGIN } from "@/lib/routes";
 
 import "./globals.css";
-
-const GA_MEASUREMENT_ID = "G-DZD6C8C6HT";
 
 const inter = Inter({
   subsets: ["latin"],
@@ -56,22 +53,16 @@ export const metadata: Metadata = {
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
     <html className={`dark ${inter.variable}`} lang="en">
+      <head>
+        <link href="https://us.i.posthog.com" rel="preconnect" />
+        <link href="https://us-assets.i.posthog.com" rel="dns-prefetch" />
+      </head>
       <body className="h-full overflow-hidden">
         <div className="relative h-full w-full overflow-hidden bg-background">
           {children}
           <SiteHeader />
           <SiteFooter />
         </div>
-        <Script
-          src={`https://www.googletagmanager.com/gtag/js?id=${GA_MEASUREMENT_ID}`}
-          strategy="afterInteractive"
-        />
-        <Script id="google-analytics" strategy="afterInteractive">
-          {`window.dataLayer = window.dataLayer || [];
-function gtag(){dataLayer.push(arguments);}
-gtag('js', new Date());
-gtag('config', '${GA_MEASUREMENT_ID}');`}
-        </Script>
       </body>
     </html>
   );
