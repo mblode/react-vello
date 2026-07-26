@@ -11,6 +11,10 @@ const reactVelloEntry = fileURLToPath(
 const rootDir = fileURLToPath(new URL(".", import.meta.url));
 
 export default defineConfig({
+  base: "/react-vello/",
+  build: {
+    outDir: "dist/react-vello",
+  },
   plugins: [react(), tailwindcss()],
   resolve: {
     alias: {

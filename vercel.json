@@ -1,5 +1,25 @@
 {
   "buildCommand": "pnpm build --filter @react-vello/examples...",
   "installCommand": "pnpm install",
-  "outputDirectory": "packages/examples/dist"
+  "outputDirectory": "packages/examples/dist",
+  "redirects": [
+    {
+      "source": "/",
+      "destination": "https://blode.co/react-vello",
+      "has": [{ "type": "host", "value": "react-vello.blode.co" }],
+      "permanent": true
+    },
+    {
+      "source": "/:path*",
+      "destination": "https://blode.co/react-vello/:path*",
+      "has": [{ "type": "host", "value": "react-vello.blode.co" }],
+      "permanent": true
+    }
+  ],
+  "rewrites": [
+    {
+      "source": "/react-vello/:path*",
+      "destination": "/react-vello/index.html"
+    }
+  ]
 }

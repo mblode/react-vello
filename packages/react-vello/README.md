@@ -22,7 +22,7 @@ Inspired by [react-three-fiber](https://github.com/pmndrs/react-three-fiber) and
 Try the live demo.
 
 <p>
-<a href="https://react-vello.blode.co">
+<a href="https://blode.co/react-vello">
 <img alt="View demo" src=".github/assets/demo.svg" width="200" />
 </a>
 </p>

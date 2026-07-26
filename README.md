@@ -22,7 +22,7 @@ Draw shapes and text declaratively in React while Rust handles the rendering.
 Try the live demo.
 
 <p>
-<a href="https://react-vello.blode.co">
+<a href="https://blode.co/react-vello">
 <img alt="View demo" src=".github/assets/demo.svg" width="200" />
 </a>
 </p>
@@ -79,4 +79,4 @@ root.render(
 
 ---
 
-Crafted by [<img src="https://matthewblode.com/avatar-circle.png" width="20" align="top" />](https://matthewblode.com) [Matthew Blode](https://matthewblode.com)
+Crafted by [<img src="https://blode.co/avatar-circle.png" width="20" align="top" />](https://blode.co) [Matthew Blode](https://blode.co)

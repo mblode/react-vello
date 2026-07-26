@@ -464,17 +464,14 @@ export function createVelloRoot(
   canvas: HTMLCanvasElement,
   options: RendererOptions = {}
 ): VelloRoot {
-  if (!supportsWebGPU) {
-    throw new Error("[rvello] WebGPU is required to create a Vello root.");
-  }
-
   let wasmDriver: WasmDriver | null = null;
+  let backend: CanvasContext["backend"] = supportsWebGPU ? "webgpu" : "canvas";
   const container = createCanvasContainer(canvas, {
     onFrame(ops) {
       options.onFrame?.(ops);
       wasmDriver?.enqueue(ops);
     },
-    softwareRenderer: false,
+    softwareRenderer: !supportsWebGPU,
   });
 
   const reconRoot = reconciler.createContainer(
@@ -508,18 +505,30 @@ export function createVelloRoot(
         new Error("readPixels is not implemented in the preview renderer")
       );
     },
-    backend: "webgpu",
+    get backend() {
+      return backend;
+    },
   };
 
-  wasmDriver = new WasmDriver(canvas, {
-    onReady: () => {
+  if (supportsWebGPU) {
+    wasmDriver = new WasmDriver(canvas, {
+      onReady: () => {
+        options.onReady?.(context);
+      },
+      onError: (error) => {
+        wasmDriver = null;
+        container.enableSoftwareRenderer();
+        backend = "canvas";
+        scheduleRender(container);
+        options.onError?.(error);
+        options.onReady?.(context);
+      },
+    });
+  } else {
+    queueMicrotask(() => {
       options.onReady?.(context);
-    },
-    onError: (error) => {
-      wasmDriver = null;
-      options.onError?.(error);
-    },
-  });
+    });
+  }
 
   return {
     render(children) {
