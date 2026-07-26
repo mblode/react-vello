@@ -27,10 +27,6 @@ import {
 import { Button } from "@/components/ui/button";
 import { Slider } from "@/components/ui/slider";
 
-type SupportStatus =
-  | { ok: true }
-  | { ok: false; reason: string; hint?: string };
-
 interface Point {
   x: number;
   y: number;
@@ -41,9 +37,10 @@ type HandleId = "start" | "control1" | "control2" | "end";
 type HandleMap = Record<HandleId, Point>;
 
 const HANDLE_ORDER: HandleId[] = ["start", "control1", "control2", "end"];
-const STRESS_TEST_REACT_VELLO_PATH = "/stress-test-react-vello";
-const STRESS_TEST_REACT_DOM_PATH = "/stress-test-react-dom";
-const STRESS_TEST_REACT_KONVA_PATH = "/stress-test-react-konva";
+const BASE_PATH = import.meta.env.BASE_URL.replace(/\/$/, "");
+const STRESS_TEST_REACT_VELLO_PATH = `${BASE_PATH}/stress-test-react-vello`;
+const STRESS_TEST_REACT_DOM_PATH = `${BASE_PATH}/stress-test-react-dom`;
+const STRESS_TEST_REACT_KONVA_PATH = `${BASE_PATH}/stress-test-react-konva`;
 const PARTICLE_COUNT_MIN = 1000;
 const PARTICLE_COUNT_MAX = 30_000;
 const PARTICLE_COUNT_STEP = 500;
@@ -66,75 +63,6 @@ interface Particle {
   twinkle: number;
   color: string;
   opacity: number;
-}
-
-async function detectWebGPU(): Promise<SupportStatus> {
-  if (!("gpu" in navigator)) {
-    return {
-      ok: false,
-      reason: "This browser does not expose navigator.gpu.",
-      hint: "Use Chrome 125+ or Edge 125+ with WebGPU enabled in chrome://flags.",
-    };
-  }
-
-  let adapter: GPUAdapter | null = null;
-  try {
-    adapter = await navigator.gpu.requestAdapter({
-      powerPreference: "high-performance",
-    });
-  } catch {
-    return {
-      ok: false,
-      reason: "Failed to request a WebGPU adapter.",
-      hint: "Confirm WebGPU is enabled and hardware acceleration is available.",
-    };
-  }
-  if (!adapter) {
-    return {
-      ok: false,
-      reason: "No compatible GPU adapter found.",
-      hint: "Ensure that chrome://flags/#enable-unsafe-webgpu is enabled.",
-    };
-  }
-
-  const enrichedAdapter = adapter as GPUAdapter & {
-    name?: string;
-    isFallbackAdapter?: boolean;
-  };
-
-  if (enrichedAdapter.isFallbackAdapter) {
-    return {
-      ok: false,
-      reason: "WebGPU fallback adapter detected.",
-      hint: "Run with a non-fallback adapter to enable Vello.",
-    };
-  }
-
-  try {
-    const canvas = document.createElement("canvas");
-    const context = (
-      canvas.getContext as unknown as (
-        contextId: "webgpu"
-      ) => GPUCanvasContext | null
-    ).call(canvas, "webgpu");
-    if (!context) {
-      return {
-        ok: false,
-        reason: "WebGPU context unavailable.",
-        hint: "Enable WebGPU and restart the browser.",
-      };
-    }
-  } catch {
-    return {
-      ok: false,
-      reason: "Failed to create a WebGPU context.",
-      hint: "Confirm WebGPU is enabled and restart the browser.",
-    };
-  }
-
-  return {
-    ok: true,
-  };
 }
 
 function useViewportSize() {
@@ -220,8 +148,6 @@ function App() {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const velloRootRef = useRef<VelloRoot | null>(null);
 
-  const [status, setStatus] = useState<SupportStatus | null>(null);
-
   const size = useViewportSize();
   const pathname = usePathname();
   const normalizedPath =
@@ -240,21 +166,8 @@ function App() {
   const [reactKonvaFps, setReactKonvaFps] = useState(0);
 
   useEffect(() => {
-    let active = true;
-    detectWebGPU().then((result) => {
-      if (!active) {
-        return;
-      }
-      setStatus(result);
-    });
-    return () => {
-      active = false;
-    };
-  }, []);
-
-  useEffect(() => {
     const canvas = canvasRef.current;
-    if (!(status?.ok && canvas && isVelloPage)) {
+    if (!(canvas && isVelloPage)) {
       velloRootRef.current?.unmount();
       velloRootRef.current = null;
       return;
@@ -274,11 +187,11 @@ function App() {
         velloRootRef.current = null;
       }
     };
-  }, [status?.ok, isVelloPage]);
+  }, [isVelloPage]);
 
   useEffect(() => {
     const root = velloRootRef.current;
-    if (!(root && status?.ok) || size.width === 0 || size.height === 0) {
+    if (!root || size.width === 0 || size.height === 0) {
       return;
     }
     if (!isVelloPage) {
@@ -298,14 +211,7 @@ function App() {
       return;
     }
     root.render(<DemoScene height={size.height} width={size.width} />);
-  }, [
-    status?.ok,
-    size.width,
-    size.height,
-    isReactVelloTest,
-    isVelloPage,
-    particleCount,
-  ]);
+  }, [size.width, size.height, isReactVelloTest, isVelloPage, particleCount]);
 
   const handleParticleCountChange = (value: number) => {
     setParticleCount(clamp(value, PARTICLE_COUNT_MIN, PARTICLE_COUNT_MAX));
@@ -339,7 +245,7 @@ function App() {
           React Vello Demo
         </div>
         <div className="flex flex-wrap items-center gap-2">
-          <AppLink isActive={isDemo} to="/">
+          <AppLink isActive={isDemo} to={BASE_PATH}>
             Demo
           </AppLink>
           <AppLink
