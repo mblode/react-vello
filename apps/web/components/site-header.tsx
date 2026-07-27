@@ -20,6 +20,14 @@ const NAV_ITEMS: Array<{ href: string; label: string }> = [
   { href: STRESS_TEST_REACT_DOM_PATH, label: "React DOM" },
 ];
 
+/** The header title doubles as each route's `h1`, so it names the page. */
+const PAGE_HEADINGS: Record<string, string> = {
+  [DEMO_PATH]: "React Vello Demo",
+  [STRESS_TEST_REACT_VELLO_PATH]: "React Vello Stress Test",
+  [STRESS_TEST_REACT_KONVA_PATH]: "React Konva Stress Test",
+  [STRESS_TEST_REACT_DOM_PATH]: "React DOM Stress Test",
+};
+
 function NavLink({
   href,
   isActive,
@@ -48,9 +56,9 @@ export function SiteHeader() {
 
   return (
     <header className="pointer-events-none absolute top-4 right-4 left-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-      <div className="font-semibold text-foreground/90 text-sm tracking-wide">
-        React Vello Demo
-      </div>
+      <h1 className="font-semibold text-foreground/90 text-sm tracking-wide">
+        {PAGE_HEADINGS[pathname] ?? "React Vello"}
+      </h1>
       <nav className="flex flex-wrap items-center gap-2">
         {NAV_ITEMS.map((item) => (
           <NavLink
