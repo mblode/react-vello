@@ -55,7 +55,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
   return (
     <html className={`dark ${inter.variable}`} lang="en">
       <head>
-        <link href="https://r.blode.co" rel="preconnect" />
+        <link href={process.env.NEXT_PUBLIC_POSTHOG_HOST} rel="preconnect" />
       </head>
       <body className="h-full overflow-hidden">
         <div className="relative h-full w-full overflow-hidden bg-background">
