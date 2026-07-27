@@ -4,6 +4,7 @@ import type { ReactNode } from "react";
 
 import { SiteFooter } from "@/components/site-footer";
 import { SiteHeader } from "@/components/site-header";
+import { OG_IMAGE, SITE_NAME } from "@/lib/metadata";
 import { absoluteUrl, DEMO_PATH, SITE_ORIGIN } from "@/lib/routes";
 
 import "./globals.css";
@@ -21,19 +22,19 @@ export const metadata: Metadata = {
     template: "%s | React Vello",
   },
   description:
-    "React Vello is a blazing fast React renderer powered by Vello, using WebGPU for high-performance 2D graphics rendering. Build interactive canvas applications with familiar React components.",
+    "A React renderer powered by Vello and WebGPU. Build interactive 2D canvas scenes with familiar React components, drawn on the GPU.",
   applicationName: "react-vello",
   manifest: "/react-vello/site.webmanifest",
   alternates: { canonical: absoluteUrl(DEMO_PATH) },
   openGraph: {
     type: "website",
     url: absoluteUrl(DEMO_PATH),
-    siteName: "React Vello",
-    images: [{ url: "/react-vello/opengraph-image.png" }],
+    siteName: SITE_NAME,
+    images: [{ url: OG_IMAGE }],
   },
   twitter: {
     card: "summary_large_image",
-    images: ["/react-vello/opengraph-image.png"],
+    images: [OG_IMAGE],
   },
   icons: {
     icon: [
