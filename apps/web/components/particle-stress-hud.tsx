@@ -1,5 +1,6 @@
 "use client";
 
+import { AboutPanel } from "@/components/about-panel";
 import { Slider } from "@/components/ui/slider";
 import {
   PARTICLE_COUNT_MAX,
@@ -11,6 +12,7 @@ interface ParticleStressHudProps {
   title: string;
   subtitle: string;
   description: string;
+  about: readonly string[];
   countLabel: string;
   count: number;
   fps: number;
@@ -21,6 +23,7 @@ export function ParticleStressHud({
   title,
   subtitle,
   description,
+  about,
   countLabel,
   count,
   fps,
@@ -30,7 +33,7 @@ export function ParticleStressHud({
   const fpsLabel = fps > 0 ? fps.toString() : "--";
 
   return (
-    <div className="absolute bottom-4 left-4 z-10 w-[min(380px,92vw)] rounded-xl border border-border/60 bg-card/90 p-4 text-foreground text-sm shadow-xl backdrop-blur">
+    <div className="absolute bottom-4 left-4 z-10 max-h-[min(560px,calc(100dvh-8rem))] w-[min(380px,92vw)] overflow-y-auto rounded-xl border border-border/60 bg-card/90 p-4 text-foreground text-sm shadow-xl backdrop-blur">
       <div className="font-semibold text-[10px] text-muted-foreground uppercase tracking-[0.2em]">
         {title}
       </div>
@@ -76,6 +79,10 @@ export function ParticleStressHud({
           <div className="text-[10px] text-muted-foreground">active</div>
         </div>
       </div>
+      <AboutPanel
+        className="mt-4 border-border/60 border-t pt-4"
+        paragraphs={about}
+      />
     </div>
   );
 }

@@ -9,6 +9,7 @@ import {
   Rect,
 } from "react-vello";
 
+import { AboutPanel } from "@/components/about-panel";
 import { VelloSurface } from "@/components/vello-surface";
 import { clamp } from "@/lib/particles";
 
@@ -60,8 +61,21 @@ export function DemoScene() {
     []
   );
 
-  return <VelloSurface scene={scene} />;
+  return (
+    <>
+      <VelloSurface scene={scene} />
+      <AboutPanel
+        className="absolute bottom-4 left-4 z-10 max-h-[min(420px,calc(100dvh-8rem))] w-[min(380px,92vw)] overflow-y-auto rounded-xl border border-border/60 bg-card/90 p-4 shadow-xl backdrop-blur"
+        paragraphs={DEMO_ABOUT}
+      />
+    </>
+  );
 }
+
+const DEMO_ABOUT = [
+  "A cubic Bézier you can pull around. Drag any of the four handles and the curve follows; the thin lines show each control point's pull on the end it belongs to. The dot running along the curve is not animating a path, it is evaluating the curve at a moving t with de Casteljau's algorithm every frame, which is why it slows through the tight part of a bend and speeds up through the straight.",
+  "What the demo is really showing is that none of the rendering is visible from the React side. The scene is written as Canvas, Group, Path and Rect components with props, and a custom React reconciler turns that tree into a scene graph which Rust encodes and Vello rasterises on the GPU. Pointer events come back out the same way, so dragging a handle is an ordinary event on a shape rather than hit-testing coordinates against a canvas by hand. It needs a browser with WebGPU: recent Chrome, Edge or Safari.",
+] as const;
 
 function BezierScene({ width, height }: { width: number; height: number }) {
   const [tick, setTick] = useState(0);

@@ -13,6 +13,10 @@ import {
 export function StressTestReactDom() {
   return (
     <StressTestShell
+      about={[
+        "The same particle simulation again, this time as plain DOM: one absolutely positioned div per particle, moved each frame by writing transform and opacity straight onto the element's style.",
+        "This is the control in the experiment, and it is not a strawman. It is written the way you would write it if you wanted it to be fast: the elements are created once, colour and border radius are set once and never touched again, will-change is declared up front, and the per-frame work is a translate3d rather than top and left. It still falls over long before the other two, because each particle is a real layout object the browser has to style, composite and hit-test, and none of that work goes away just because you avoided a reflow. Start at 1,000 and drag upward. The number worth noting is not where it breaks but how early it starts to slip.",
+      ]}
       description="Same particle simulation, DOM nodes."
       subtitle="DOM Particle Field"
       title="React DOM"
