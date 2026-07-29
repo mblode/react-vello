@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "predev": "node ../../scripts/ensure-wasm.cjs",
-    "dev": "next dev",
+    "dev": "portless react-vello next dev",
     "prebuild": "node ../../scripts/ensure-wasm.cjs",
     "build": "next build",
     "start": "next start",
