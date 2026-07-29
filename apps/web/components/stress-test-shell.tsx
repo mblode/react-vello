@@ -14,6 +14,8 @@ interface StressTestShellProps {
   title: string;
   subtitle: string;
   description: string;
+  /** Prose for the HUD. See `AboutPanel` for why it lives in the overlay. */
+  about: readonly string[];
   children: (args: {
     particleCount: number;
     onFps: (fps: number) => void;
@@ -28,6 +30,7 @@ export function StressTestShell({
   title,
   subtitle,
   description,
+  about,
   children,
 }: StressTestShellProps) {
   const [particleCount, setParticleCount] = useState(PARTICLE_COUNT_DEFAULT);
@@ -43,6 +46,7 @@ export function StressTestShell({
     <>
       {children({ particleCount, onFps })}
       <ParticleStressHud
+        about={about}
         count={particleCount}
         countLabel="Particles"
         description={description}

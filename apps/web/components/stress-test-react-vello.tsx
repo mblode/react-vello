@@ -24,6 +24,10 @@ type MutableRectNode = NodeRef & { props: RectProps };
 export function StressTestReactVello() {
   return (
     <StressTestShell
+      about={[
+        "All three benchmark pages run the same simulation: round particles drifting upward and twinkling, a slider from 1,000 to 30,000 of them, and a rolling average of the frame rate. This page draws them with React Vello, so the scene graph is encoded in Rust compiled to WebAssembly and rasterised on the GPU by Vello through WebGPU.",
+        "React is deliberately kept out of the frame loop. Reconciling 30,000 components at 60fps would cost far more than the drawing does, so the particles are mounted once and each frame writes to the scene nodes' props through refs before asking the canvas for a redraw. The Konva page does exactly the same thing, which is what keeps the comparison honest: the variable across the three pages is the renderer, not how hard React is working. Drag the slider up and watch for the point where the frame rate starts to give.",
+      ]}
       description="Same particle simulation, Vello renderer."
       subtitle="WebGPU Scene Graph"
       title="React Vello"
