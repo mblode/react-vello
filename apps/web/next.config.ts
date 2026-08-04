@@ -14,9 +14,6 @@ const nextConfig: NextConfig = {
     // 16.3: run the React Compiler through Turbopack's native Rust pass
     // instead of the Babel plugin, so no Babel step is needed in the build.
     turbopackRustReactCompiler: true,
-    // The repo pins TypeScript 7, which drops the legacy compiler API Next
-    // reaches for by default.
-    useTypeScriptCli: true,
   },
 };
 
