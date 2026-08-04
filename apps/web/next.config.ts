@@ -11,6 +11,9 @@ const nextConfig: NextConfig = {
   // `new URL(..., import.meta.url)`, which needs to go through the bundler.
   transpilePackages: ["react-vello"],
   experimental: {
+    // 16.3: run the React Compiler through Turbopack's native Rust pass
+    // instead of the Babel plugin, so no Babel step is needed in the build.
+    turbopackRustReactCompiler: true,
     // The repo pins TypeScript 7, which drops the legacy compiler API Next
     // reaches for by default.
     useTypeScriptCli: true,
