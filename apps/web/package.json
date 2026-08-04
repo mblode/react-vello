@@ -19,10 +19,10 @@
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "konva": "^10.3.0",
-    "next": "^16.2.12",
+    "next": "16.3.0",
     "posthog-js": "^1.407.2",
-    "react": "^19.2.7",
-    "react-dom": "^19.2.7",
+    "react": "19.2.8",
+    "react-dom": "19.2.8",
     "react-konva": "^19.2.5",
     "react-vello": "workspace:*",
     "tailwind-merge": "^3.6.0",
@@ -34,7 +34,6 @@
     "@types/react": "^19.2.17",
     "@types/react-dom": "^19.2.3",
     "@webgpu/types": "^0.1.71",
-    "babel-plugin-react-compiler": "^1.0.0",
     "tailwindcss": "^4.3.2",
     "typescript": "7.0.2"
   }
