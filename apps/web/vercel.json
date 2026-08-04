@@ -7,13 +7,13 @@
       "source": "/",
       "destination": "https://blode.co/react-vello",
       "has": [{ "type": "host", "value": "react-vello.blode.co" }],
-      "permanent": true
+      "statusCode": 301
     },
     {
       "source": "/:path*",
       "destination": "https://blode.co/react-vello/:path*",
       "has": [{ "type": "host", "value": "react-vello.blode.co" }],
-      "permanent": true
+      "statusCode": 301
     }
   ]
 }
