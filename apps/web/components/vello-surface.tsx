@@ -77,7 +77,7 @@ export function VelloSurface({ label, scene }: VelloSurfaceProps) {
       />
       {backend === "canvas" && (
         <p className="-translate-x-1/2 absolute top-[calc(var(--header-height)+0.5rem)] left-1/2 z-10 rounded-full border border-border bg-card/85 px-3 py-1 text-muted-foreground text-xs backdrop-blur-md">
-          WebGPU unavailable — running the Canvas 2D fallback.
+          No WebGPU here, so this is the Canvas 2D fallback.
         </p>
       )}
     </>

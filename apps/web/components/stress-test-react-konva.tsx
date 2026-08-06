@@ -19,10 +19,10 @@ export function StressTestReactKonva() {
     <StressTestShell
       detail={[
         "Canvas 2D runs everywhere and needs no feature detection. Below a few thousand shapes you will not be able to tell these pages apart.",
-        "What it cannot do is batch. Every particle is its own fill against the 2D context, issued from the CPU, so cost tracks the number of shapes rather than the pixels they cover. Set a count here, then open the Vello page and set the same one.",
+        "What it cannot do is batch, so cost tracks the number of shapes rather than the pixels they cover. Set a count here, then open the Vello page and set the same one.",
       ]}
       label="React Konva"
-      summary="The shared particle simulation, drawn by Konva on a 2D canvas."
+      summary="Drawn by Konva: one fill per particle against a 2D canvas, issued from the CPU."
     >
       {({ particleCount, onFps }) => (
         <KonvaParticleField onFps={onFps} particleCount={particleCount} />

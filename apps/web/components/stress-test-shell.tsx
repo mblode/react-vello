@@ -14,7 +14,7 @@ import { clamp } from "@/lib/utils";
 
 /** Stated here rather than repeated on all three benchmark pages. */
 const BENCHMARK_BASIS =
-  "All three benchmark pages run the same simulation: particles drifting upward and twinkling, a slider from 1,000 to 30,000 of them, and a rolling average of the frame rate.";
+  "All three pages run the same simulation and the same controls. The only variable is the renderer.";
 
 /**
  * Owns the particle count and FPS readout shared by all three benchmarks, so

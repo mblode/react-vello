@@ -25,11 +25,11 @@ export function StressTestReactVello() {
   return (
     <StressTestShell
       detail={[
-        "The scene graph is encoded in Rust compiled to WebAssembly, then rasterised on the GPU by Vello through WebGPU.",
-        "React is kept out of the frame loop. Reconciling 30,000 components at 60fps would cost more than the drawing does, so particles mount once and each frame writes to the scene nodes' props through refs before asking for a redraw. The Konva page does the same, so the variable across the three pages is the renderer, not how hard React is working.",
+        "The scene graph is encoded in Rust compiled to WebAssembly, then rasterised by Vello through WebGPU.",
+        "React is kept out of the frame loop. Reconciling 30,000 components at 60fps would cost more than the drawing does, so the particles mount once and each frame writes to their props through refs before asking for a redraw. The Konva page does the same.",
       ]}
       label="React Vello"
-      summary="The shared particle simulation, drawn by Vello on the GPU."
+      summary="Drawn by Vello: the whole scene batched, then rasterised on the GPU."
     >
       {({ particleCount, onFps }) => (
         <VelloParticles onFps={onFps} particleCount={particleCount} />

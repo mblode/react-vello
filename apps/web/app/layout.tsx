@@ -29,11 +29,11 @@ const glideMono = localFont({
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_ORIGIN),
   title: {
-    default: "React Vello - Blazing Fast React Renderer Powered by Vello",
+    default: "React Vello - A React Renderer for Vello and WebGPU",
     template: "%s | React Vello",
   },
   description:
-    "A React renderer powered by Vello and WebGPU. Build interactive 2D canvas scenes with familiar React components, drawn on the GPU.",
+    "Write 2D scenes as React components and draw them on the GPU. A custom reconciler turns the React tree into a Vello scene graph, rendered through WebGPU.",
   applicationName: "react-vello",
   manifest: "/react-vello/site.webmanifest",
   alternates: { canonical: absoluteUrl(DEMO_PATH) },
