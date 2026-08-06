@@ -10,7 +10,7 @@ import {
   type RectProps,
 } from "react-vello";
 
-import { StressTestShell } from "@/components/stress-test-shell";
+import { useCompare } from "@/components/compare/compare-context";
 import { VelloSurface, type VelloScene } from "@/components/vello-surface";
 import {
   getParticlePulse,
@@ -21,30 +21,13 @@ import { CANVAS_BG, getParticleColor } from "@/lib/scene-colors";
 
 type MutableRectNode = NodeRef & { props: RectProps };
 
-export function StressTestReactVello() {
-  return (
-    <StressTestShell
-      detail={[
-        "The scene graph is encoded in Rust compiled to WebAssembly, then rasterised by Vello through WebGPU.",
-        "React is kept out of the frame loop. Reconciling 30,000 components at 60fps would cost more than the drawing does, so the particles mount once and each frame writes to their props through refs before asking for a redraw. The Konva page does the same.",
-      ]}
-      label="React Vello"
-      summary="Drawn by Vello: the whole scene batched, then rasterised on the GPU."
-    >
-      {({ particleCount, onFps }) => (
-        <VelloParticles onFps={onFps} particleCount={particleCount} />
-      )}
-    </StressTestShell>
+export function VelloField() {
+  const { particleCount, reportFps } = useCompare();
+  const onFps = useCallback(
+    (fps: number) => reportFps("react-vello", fps),
+    [reportFps]
   );
-}
 
-function VelloParticles({
-  particleCount,
-  onFps,
-}: {
-  particleCount: number;
-  onFps: (fps: number) => void;
-}) {
   const scene = useCallback(
     ({ width, height, context }: VelloScene) => (
       <VelloParticleField
@@ -66,21 +49,19 @@ function VelloParticles({
   );
 }
 
-interface VelloParticleFieldProps {
-  width: number;
-  height: number;
-  particleCount: number;
-  onFps?: (fps: number) => void;
-  context?: CanvasContext;
-}
-
 function VelloParticleField({
   width,
   height,
   particleCount,
   onFps,
   context,
-}: VelloParticleFieldProps) {
+}: {
+  width: number;
+  height: number;
+  particleCount: number;
+  onFps: (fps: number) => void;
+  context?: CanvasContext;
+}) {
   const nodeRefs = useRef<Array<MutableRectNode | null>>([]);
   const particleKeys = useMemo(
     () =>

@@ -1,4 +1,4 @@
-import { StressTestReactDom } from "@/components/stress-test-react-dom";
+import { DomField } from "@/components/compare/dom-field";
 import { pageMetadata } from "@/lib/metadata";
 import { STRESS_TEST_REACT_DOM_PATH } from "@/lib/routes";
 
@@ -10,5 +10,5 @@ export const metadata = pageMetadata({
 });
 
 export default function StressTestReactDomPage() {
-  return <StressTestReactDom />;
+  return <DomField />;
 }

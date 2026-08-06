@@ -10,6 +10,7 @@ import {
 } from "react-vello";
 
 import { InfoPanel } from "@/components/info-panel";
+import { InstallCommand } from "@/components/install-command";
 import { VelloSurface, type VelloScene } from "@/components/vello-surface";
 import { CANVAS_BG, HANDLE_COLOR, SCENE_INK } from "@/lib/scene-colors";
 import { usePrefersReducedMotion } from "@/lib/use-prefers-reduced-motion";
@@ -80,7 +81,9 @@ export function DemoScene() {
         detail={DEMO_DETAIL}
         label="Cubic Bézier"
         summary={DEMO_SUMMARY}
-      />
+      >
+        <InstallCommand />
+      </InfoPanel>
     </>
   );
 }

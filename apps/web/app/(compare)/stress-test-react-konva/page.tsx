@@ -1,4 +1,4 @@
-import { StressTestReactKonva } from "@/components/stress-test-react-konva";
+import { KonvaField } from "@/components/compare/konva-field";
 import { pageMetadata } from "@/lib/metadata";
 import { STRESS_TEST_REACT_KONVA_PATH } from "@/lib/routes";
 
@@ -10,5 +10,5 @@ export const metadata = pageMetadata({
 });
 
 export default function StressTestReactKonvaPage() {
-  return <StressTestReactKonva />;
+  return <KonvaField />;
 }
