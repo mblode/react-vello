@@ -3,7 +3,14 @@ import type { Mat3, Vec2 } from "./types";
 export const IDENTITY_MATRIX: Mat3 = [1, 0, 0, 1, 0, 0];
 
 export function multiplyTransforms(parent: Mat3, child?: Mat3): Mat3 {
-  const c = child ?? IDENTITY_MATRIX;
+  // Most nodes carry no transform of their own, and multiplying by the identity
+  // to allocate a copy of what you already had is the single most common
+  // allocation in a frame. Callers treat matrices as immutable, so handing back
+  // the parent is safe.
+  if (child === undefined) {
+    return parent;
+  }
+  const c = child;
   const a0 = parent[0];
   const a1 = parent[1];
   const a2 = parent[2];

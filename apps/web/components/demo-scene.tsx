@@ -9,10 +9,9 @@ import {
   Rect,
 } from "react-vello";
 
-import { InfoPanel } from "@/components/info-panel";
-import { InstallCommand } from "@/components/install-command";
 import { VelloSurface, type VelloScene } from "@/components/vello-surface";
 import { CANVAS_BG, HANDLE_COLOR, SCENE_INK } from "@/lib/scene-colors";
+import { useMediaQuery } from "@/lib/use-media-query";
 import { usePrefersReducedMotion } from "@/lib/use-prefers-reduced-motion";
 import { clamp, lerp } from "@/lib/utils";
 
@@ -30,14 +29,6 @@ const TRACER_PERIOD_MS = 4500;
 const TRACER_STATIC_T = 0.35;
 const TRACER_RADIUS = 5;
 const HALO_RADIUS = 11;
-
-const DEMO_SUMMARY =
-  "Drag any of the four handles. The dot is the curve re-evaluated every frame.";
-
-const DEMO_DETAIL = [
-  "The thin lines show each control point's pull on the end it belongs to. The dot is de Casteljau's algorithm run at a moving t, which is why it slows through the tight part of a bend and speeds up through the straight.",
-  "None of this shows up on the React side. The scene is Canvas, Group, Path and Rect components with props; a custom reconciler turns that tree into a scene graph, Rust encodes it, and Vello rasterises it on the GPU. Pointer events come back the same way, so dragging a handle is an ordinary event on a shape rather than hit-testing coordinates by hand.",
-] as const;
 
 function buildCubicPath(
   start: Point,
@@ -65,30 +56,44 @@ function getCubicPoint(
 
 export function DemoScene() {
   const scene = useCallback(
-    ({ width, height, context }: VelloScene) => (
-      <BezierScene context={context} height={height} width={width} />
+    ({ width, height, context, visible }: VelloScene) => (
+      <BezierScene
+        context={context}
+        height={height}
+        visible={visible}
+        width={width}
+      />
     ),
     []
   );
 
   return (
-    <>
-      <VelloSurface
-        label="Interactive cubic Bézier curve with four draggable handles"
-        scene={scene}
-      />
-      <InfoPanel
-        detail={DEMO_DETAIL}
-        label="Cubic Bézier"
-        summary={DEMO_SUMMARY}
-      >
-        <InstallCommand />
-      </InfoPanel>
-    </>
+    /**
+     * The stage, then the prose below it. From `md` this collapses to an empty
+     * one-viewport spacer whose only child is pinned, which is what lets the
+     * prose scroll up over the canvas.
+     *
+     * On a phone it stops short of the full viewport on purpose. The canvas
+     * takes `touch-action: none` so a two-axis handle drag works, which means
+     * it cannot also be the surface you swipe to scroll — leaving the top of
+     * the prose on screen gives the reader somewhere to swipe from, and says
+     * the page continues.
+     */
+    <div className="grid min-h-[72svh] grid-rows-[var(--header-height)_minmax(0,1fr)] md:block md:min-h-dvh">
+      {/* The fixed header's footprint. */}
+      <div aria-hidden="true" className="md:hidden" />
+
+      <div className="relative min-h-0 md:fixed md:inset-0">
+        <VelloSurface
+          label="Interactive cubic Bézier curve with four draggable handles"
+          scene={scene}
+        />
+      </div>
+    </div>
   );
 }
 
-function BezierScene({ width, height, context }: VelloScene) {
+function BezierScene({ width, height, context, visible }: VelloScene) {
   const [handles, setHandles] = useState<HandleMap>(() => ({
     start: { x: 0.12, y: 0.52 },
     control1: { x: 0.32, y: 0.18 },
@@ -103,6 +108,11 @@ function BezierScene({ width, height, context }: VelloScene) {
     offset: Point;
   } | null>(null);
   const prefersReducedMotion = usePrefersReducedMotion();
+  // A finger is not a cursor. `hitSlop` inflates the hit rect symmetrically, so
+  // 16 puts the 9px anchors at 50px and the 7px controls at 46px, both clear of
+  // the 44px floor, without growing the dots visually.
+  const coarsePointer = useMediaQuery("(pointer: coarse)");
+  const hitSlop = coarsePointer ? 16 : 12;
 
   const safeWidth = Math.max(1, width);
   const safeHeight = Math.max(1, height);
@@ -150,7 +160,10 @@ function BezierScene({ width, height, context }: VelloScene) {
       context.requestFrame();
     };
 
-    if (prefersReducedMotion) {
+    // Scrolled behind the prose, or parked by preference: place the dot once
+    // and stop. Either way there is nothing to animate and no reason to keep
+    // asking the GPU for frames.
+    if (prefersReducedMotion || !visible) {
       place(TRACER_STATIC_T);
       return;
     }
@@ -163,7 +176,7 @@ function BezierScene({ width, height, context }: VelloScene) {
     };
     raf = requestAnimationFrame(loop);
     return () => cancelAnimationFrame(raf);
-  }, [context, prefersReducedMotion, tracerOrigin, haloOrigin]);
+  }, [context, prefersReducedMotion, visible, tracerOrigin, haloOrigin]);
 
   const curvePath = buildCubicPath(start, control1, control2, end);
   const handleLineA = `M ${start.x} ${start.y} L ${control1.x} ${control1.y}`;
@@ -255,7 +268,7 @@ function BezierScene({ width, height, context }: VelloScene) {
         />
         <Rect
           fill={{ kind: "solid", color }}
-          hitSlop={12}
+          hitSlop={hitSlop}
           onPointerDown={handlePointerDown(id)}
           onPointerEnter={() => setHoveredHandle(id)}
           onPointerLeave={() => setHoveredHandle(null)}

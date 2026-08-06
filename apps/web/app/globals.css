@@ -121,11 +121,6 @@
     @apply bg-selection text-selection-foreground;
   }
 
-  html,
-  body {
-    height: 100%;
-  }
-
   body {
     @apply bg-background font-sans font-normal text-foreground antialiased;
     /* Glide is a variable font covering 100-950, so every weight used here is a
@@ -145,5 +140,16 @@
   [role="button"]:not(:disabled),
   summary {
     cursor: pointer;
+  }
+}
+
+@layer components {
+  /* The canvas below is pinned and full width, so a column-width background
+     would let it show through either side of the prose as you scroll. Paint out
+     to the viewport edges without wrapping the prose in another element. */
+  .full-bleed-bg {
+    background: var(--background);
+    box-shadow: 0 0 0 100vmax var(--background);
+    clip-path: inset(0 -100vmax);
   }
 }

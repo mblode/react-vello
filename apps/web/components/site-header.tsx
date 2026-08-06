@@ -46,7 +46,7 @@ export function SiteHeader() {
   const pathname = usePathname();
 
   return (
-    <header className="absolute inset-x-0 top-0 z-20 flex h-[var(--header-height)] items-center justify-between gap-4 border-border/60 border-b bg-background/70 px-4 backdrop-blur-md">
+    <header className="fixed inset-x-0 top-0 z-20 flex h-[var(--header-height)] items-center justify-between gap-4 border-border/60 border-b bg-background/70 px-4 backdrop-blur-md">
       {/* Branding, not the page heading: each route's `h1` is its InfoPanel
           label, so the four pages keep distinct headings. */}
       <Link

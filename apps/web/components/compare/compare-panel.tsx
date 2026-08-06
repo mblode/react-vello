@@ -57,6 +57,8 @@ export function ComparePanel({ active }: { active: RendererMeta }) {
 
   return (
     <InfoPanel
+      // Sits above the credit badge on a phone, beside it from `sm` up.
+      className="absolute bottom-16 left-4 z-10 w-[min(22rem,calc(100vw-2rem))] sm:bottom-4"
       detail={[BENCHMARK_BASIS, ...active.detail]}
       label={active.name}
       summary={active.summary}

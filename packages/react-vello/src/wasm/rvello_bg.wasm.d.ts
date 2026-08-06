@@ -3,20 +3,25 @@
 export const memory: WebAssembly.Memory;
 export const __wbg_rendererhandle_free: (a: number, b: number) => void;
 export const create_renderer: (a: any) => any;
-export const rendererhandle_apply: (a: number, b: any) => [number, number];
+export const rendererhandle_apply_and_render: (
+  a: number,
+  b: number
+) => [number, number];
+export const rendererhandle_ops_reserve: (a: number, b: number) => number;
 export const rendererhandle_render: (a: number) => [number, number];
 export const rendererhandle_resize: (a: number, b: number, c: number) => void;
 export const wasm_start: () => void;
-export const wasm_bindgen__convert__closures_____invoke__h1e3f4f5e5b6e003f: (
+export const wasm_memory: () => any;
+export const wasm_bindgen__convert__closures_____invoke__h00bea32f875544c4: (
   a: number,
   b: number,
   c: any
 ) => void;
-export const wasm_bindgen__closure__destroy__hb8467f3e511a960c: (
+export const wasm_bindgen__closure__destroy__h672b61b92ad0ee27: (
   a: number,
   b: number
 ) => void;
-export const wasm_bindgen__convert__closures_____invoke__h2a0f84921f614cc0: (
+export const wasm_bindgen__convert__closures_____invoke__h4ad653f24082db39: (
   a: number,
   b: number,
   c: any,
@@ -32,6 +37,5 @@ export const __wbindgen_realloc: (
 export const __wbindgen_exn_store: (a: number) => void;
 export const __externref_table_alloc: () => number;
 export const __wbindgen_externrefs: WebAssembly.Table;
-export const __wbindgen_free: (a: number, b: number, c: number) => void;
 export const __externref_table_dealloc: (a: number) => void;
 export const __wbindgen_start: () => void;

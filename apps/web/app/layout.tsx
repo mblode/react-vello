@@ -2,7 +2,6 @@ import type { Metadata } from "next";
 import localFont from "next/font/local";
 import type { ReactNode } from "react";
 
-import { SiteFooter } from "@/components/site-footer";
 import { SiteHeader } from "@/components/site-header";
 import { OG_IMAGE, SITE_NAME } from "@/lib/metadata";
 import { absoluteUrl, DEMO_PATH, SITE_ORIGIN } from "@/lib/routes";
@@ -68,12 +67,11 @@ export default function RootLayout({ children }: { children: ReactNode }) {
       <head>
         <link href={process.env.NEXT_PUBLIC_POSTHOG_HOST} rel="preconnect" />
       </head>
-      <body className="h-full overflow-hidden">
-        <div className="relative h-full w-full overflow-hidden bg-background">
-          {children}
-          <SiteHeader />
-          <SiteFooter />
-        </div>
+      {/* No height or overflow here. The demo scrolls; the benchmark routes
+          pin themselves to the viewport in their own layout. */}
+      <body className="bg-background">
+        {children}
+        <SiteHeader />
       </body>
     </html>
   );

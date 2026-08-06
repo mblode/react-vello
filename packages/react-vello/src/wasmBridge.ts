@@ -3,8 +3,17 @@ let wasmModulePromise: Promise<WasmModule | null> | null = null;
 type WasmModule = typeof import("./wasm/rvello.js");
 
 export interface WasmRenderer {
-  apply(data: Uint8Array): void;
-  render(): void;
+  /**
+   * Grows the renderer's frame buffer to at least `required` bytes and returns
+   * a view onto it. The encoder writes the frame here, inside WASM linear
+   * memory, so nothing has to be copied across the boundary afterwards.
+   *
+   * Contents already written survive a grow, so this is safe to call part-way
+   * through encoding.
+   */
+  reserve(required: number): Uint8Array;
+  /** Decodes the first `length` bytes of the frame buffer and presents. */
+  submit(length: number): void;
 }
 
 export async function createWasmRenderer(
@@ -21,12 +30,17 @@ export async function createWasmRenderer(
 
   try {
     const handle = await module.create_renderer(canvas);
+    const memory = module.wasm_memory() as WebAssembly.Memory;
     return {
-      apply(data) {
-        handle.apply(data);
+      reserve(required) {
+        // Re-derived every time rather than cached: `ops_reserve` can move the
+        // buffer, and any WASM allocation can grow linear memory, which
+        // detaches every existing view onto it.
+        const ptr = handle.ops_reserve(required);
+        return new Uint8Array(memory.buffer, ptr, required);
       },
-      render() {
-        handle.render();
+      submit(length) {
+        handle.apply_and_render(length);
       },
     };
   } catch (error) {

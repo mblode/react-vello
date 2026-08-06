@@ -1,3 +1,4 @@
+import type { BinaryWriter } from "./binaryWriter";
 import { type NormalizedRgba, paintToRgba } from "./color";
 import { resolveCornerRadius } from "./geometry";
 import { IDENTITY_MATRIX, multiplyTransforms } from "./mat3";
@@ -25,13 +26,30 @@ interface EncoderState {
   opacity: number;
 }
 
+/** Draw ops in the frame the writer currently holds. Diagnostics only. */
+let opCount = 0;
+
+export function getLastFrameOpCount(): number {
+  return opCount;
+}
+
+/**
+ * Serialises the scene graph into the container's frame buffer.
+ *
+ * The writer and its buffer live on the container and are reused, so a frame
+ * allocates nothing. Once a GPU renderer is attached that buffer *is* WASM
+ * linear memory, which means the returned view is only valid until the next
+ * frame — copy it if you intend to keep it.
+ */
 export function encodeFrame(container: CanvasContainer): Uint8Array | null {
   const root = container.root;
   if (!root || root.type !== "Canvas") {
     return null;
   }
 
-  const writer = new BinaryWriter();
+  const writer = container.writer;
+  writer.reset();
+  opCount = 0;
   const canvasNode = root as SceneNode<"Canvas">;
   const canvasProps = canvasNode.props;
 
@@ -133,6 +151,7 @@ function encodeRect(
   const size = resolveRectSize(props);
   const radius = resolveCornerRadius(props.radius, size[0], size[1]);
 
+  opCount += 1;
   writer.writeUint8(OpCode.Rect);
   writer.writeFloat32(opacity);
   writeMat3(writer, transform);
@@ -168,6 +187,7 @@ function encodePath(
 
   const pathBytes = textEncoder.encode(pathData);
 
+  opCount += 1;
   writer.writeUint8(OpCode.Path);
   writer.writeFloat32(opacity);
   writeMat3(writer, transform);
@@ -235,6 +255,7 @@ function encodeText(
   }
   const textBytes = textEncoder.encode(text);
 
+  opCount += 1;
   writer.writeUint8(OpCode.Text);
   writer.writeFloat32(opacity);
   writeMat3(writer, transform);
@@ -276,61 +297,4 @@ function normalizeBackground(
     return { kind: "solid", color: background };
   }
   return { kind: "solid", color: background };
-}
-
-class BinaryWriter {
-  private view: DataView;
-  private buffer: ArrayBuffer;
-  private length = 0;
-
-  constructor(initialSize = 1024) {
-    this.buffer = new ArrayBuffer(initialSize);
-    this.view = new DataView(this.buffer);
-  }
-
-  writeUint8(value: number): void {
-    this.ensureCapacity(1);
-    this.view.setUint8(this.length, value);
-    this.length += 1;
-  }
-
-  writeFloat32(value: number): void {
-    this.ensureCapacity(4);
-    this.view.setFloat32(this.length, value, true);
-    this.length += 4;
-  }
-
-  writeUint32(value: number): void {
-    this.ensureCapacity(4);
-    this.view.setUint32(this.length, value, true);
-    this.length += 4;
-  }
-
-  writeBytes(bytes: Uint8Array): void {
-    this.ensureCapacity(bytes.length);
-    new Uint8Array(this.buffer, this.length, bytes.length).set(bytes);
-    this.length += bytes.length;
-  }
-
-  take(): Uint8Array {
-    return new Uint8Array(this.buffer, 0, this.length);
-  }
-
-  private ensureCapacity(size: number): void {
-    const required = this.length + size;
-    if (required <= this.buffer.byteLength) {
-      return;
-    }
-
-    let nextLength = this.buffer.byteLength * 2;
-    while (nextLength < required) {
-      nextLength *= 2;
-    }
-
-    const nextBuffer = new ArrayBuffer(nextLength);
-    const currentSlice = new Uint8Array(this.buffer, 0, this.length);
-    new Uint8Array(nextBuffer, 0, this.length).set(currentSlice);
-    this.buffer = nextBuffer;
-    this.view = new DataView(this.buffer);
-  }
 }

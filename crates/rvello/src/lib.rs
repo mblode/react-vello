@@ -1,17 +1,17 @@
+use std::collections::HashMap;
 use std::mem;
 use std::sync::Arc;
 
-use js_sys::Uint8Array;
 use skrifa::charmap::Charmap;
 use skrifa::instance::{LocationRef, Size};
-use skrifa::metrics::GlyphMetrics;
+use skrifa::metrics::{GlyphMetrics, Metrics};
 use skrifa::{FontRef, GlyphId, MetadataProvider};
 use wasm_bindgen::prelude::*;
 use web_sys::HtmlCanvasElement;
 
-use vello::kurbo::{Affine, BezPath, RoundedRect, Stroke};
+use vello::kurbo::{Affine, BezPath, Circle, Rect, RoundedRect, Stroke};
 use vello::peniko::{Blob, Color, Fill, FontData};
-use vello::{wgpu, AaConfig, Renderer, RendererOptions, Scene};
+use vello::{wgpu, AaConfig, AaSupport, Renderer, RendererOptions, Scene};
 
 #[wasm_bindgen]
 pub struct RendererHandle {
@@ -23,6 +23,16 @@ pub struct RendererHandle {
     config: wgpu::SurfaceConfiguration,
     renderer: Renderer,
     scene: Scene,
+    /// The frame buffer JS encodes into, kept across frames so its allocation
+    /// is paid for once. JS writes here directly through a view onto linear
+    /// memory, so a frame crosses the boundary as a length, not as bytes.
+    ops: Vec<u8>,
+    /// Parsed SVG paths, keyed by their source string.
+    ///
+    /// `BezPath::from_svg` re-tokenises the whole path every time, and most
+    /// paths in a scene are chrome that never changes. A path whose `d` really
+    /// does change every frame just misses, which costs one insertion.
+    paths: HashMap<String, BezPath>,
     font: FontData,
     base_color: Color,
     storage_format: wgpu::TextureFormat,
@@ -48,6 +58,9 @@ struct PresentPipeline {
 
 const DEFAULT_FONT_BYTES: &[u8] = include_bytes!("../assets/space-grotesk-regular.ttf");
 
+/// Distinct path strings kept before the cache is dropped and rebuilt.
+const PATH_CACHE_LIMIT: usize = 256;
+
 fn default_font_data() -> FontData {
     let blob = Blob::new(Arc::new(DEFAULT_FONT_BYTES));
     FontData::new(blob, 0)
@@ -55,7 +68,7 @@ fn default_font_data() -> FontData {
 
 #[wasm_bindgen]
 pub async fn create_renderer(canvas: HtmlCanvasElement) -> Result<RendererHandle, JsValue> {
-    console_error_panic_hook::set_once();
+    install_panic_hook();
 
     let instance = wgpu::Instance::new(&wgpu::InstanceDescriptor {
         backends: wgpu::Backends::BROWSER_WEBGPU,
@@ -75,7 +88,12 @@ pub async fn create_renderer(canvas: HtmlCanvasElement) -> Result<RendererHandle
         .await
         .map_err(|err| js_error(&format!("Failed to acquire WebGPU adapter: {err:?}")))?;
 
-    let limits = wgpu::Limits::downlevel_webgl2_defaults().using_resolution(adapter.limits());
+    // The backend is WebGPU only, so there is nothing to gain from asking for
+    // WebGL2's downlevel floor — and plenty to lose. `using_resolution` only
+    // lifts texture dimensions; storage-buffer counts and compute workgroup
+    // sizes would stay pinned at the WebGL2 minimum, which is exactly what
+    // Vello's compute rasteriser needs headroom in.
+    let limits = adapter.limits();
 
     let (device, queue) = adapter
         .request_device(&wgpu::DeviceDescriptor {
@@ -114,8 +132,17 @@ pub async fn create_renderer(canvas: HtmlCanvasElement) -> Result<RendererHandle
     };
     surface.configure(&device, &config);
 
-    let renderer = Renderer::new(&device, RendererOptions::default())
-        .map_err(|err| js_error(&format!("Failed to create Vello renderer: {err:?}")))?;
+    // `RendererOptions::default()` compiles area, MSAA8 and MSAA16 fine-raster
+    // permutations at startup. `render` only ever asks for `AaConfig::Area`, so
+    // two thirds of that shader compilation was paid for and never used.
+    let renderer = Renderer::new(
+        &device,
+        RendererOptions {
+            antialiasing_support: AaSupport::area_only(),
+            ..Default::default()
+        },
+    )
+    .map_err(|err| js_error(&format!("Failed to create Vello renderer: {err:?}")))?;
 
     let sampler = device.create_sampler(&wgpu::SamplerDescriptor {
         label: Some("rvello-present-sampler"),
@@ -155,6 +182,8 @@ pub async fn create_renderer(canvas: HtmlCanvasElement) -> Result<RendererHandle
         config,
         renderer,
         scene: Scene::new(),
+        ops: Vec::new(),
+        paths: HashMap::new(),
         font: default_font_data(),
         base_color: Color::new([0.0, 0.0, 0.0, 1.0]),
         storage_format,
@@ -183,13 +212,61 @@ impl RendererHandle {
         self.present_bind_group = None;
     }
 
+    /// Grows the frame buffer to at least `len` bytes and hands back a pointer
+    /// into linear memory.
+    ///
+    /// Existing contents survive — `Vec::resize` copies them to the new
+    /// allocation and `memory.grow` preserves the old pages — so JS can call
+    /// this part-way through encoding a frame, re-derive its view, and carry on
+    /// writing where it left off.
     #[wasm_bindgen]
-    pub fn apply(&mut self, ops: Uint8Array) -> Result<(), JsValue> {
-        let bytes = ops.to_vec();
-        let mut decoder = Decoder::new(&bytes);
+    pub fn ops_reserve(&mut self, len: usize) -> *mut u8 {
+        if self.ops.len() < len {
+            self.ops.resize(len, 0);
+        }
+        self.ops.as_mut_ptr()
+    }
+
+    /// Decodes the first `len` bytes already sitting in the frame buffer, then
+    /// presents. One boundary crossing per frame, and nothing copied to get
+    /// here.
+    #[wasm_bindgen]
+    pub fn apply_and_render(&mut self, len: usize) -> Result<(), JsValue> {
+        // Moved out so the decoder can borrow the buffer while the rest of
+        // `self` is mutated. The allocation is handed straight back.
+        let ops = mem::take(&mut self.ops);
+        let mut paths = mem::take(&mut self.paths);
+        let end = len.min(ops.len());
+        let result = self.apply(&ops[..end], &mut paths);
+        self.ops = ops;
+        self.paths = paths;
+        result?;
+        self.render()
+    }
+
+    fn apply(
+        &mut self,
+        bytes: &[u8],
+        paths: &mut HashMap<String, BezPath>,
+    ) -> Result<(), JsValue> {
+        let mut decoder = Decoder::new(bytes);
 
         self.scene.reset();
         self.base_color = Color::new([0.0, 0.0, 0.0, 1.0]);
+
+        // Parsed once per frame rather than once per text node. `FontRef` reads
+        // the TTF table directory and `charmap()` resolves the cmap, and both
+        // used to be redone for every `Text` op in the scene.
+        //
+        // Cloned because it is an `Arc` bump, and because borrowing `self.font`
+        // across the loop would lock out the `&mut self` the decoder needs.
+        let font = self.font.clone();
+        let font_ref = FontRef::from_index(font.data.as_ref(), font.index)
+            .map_err(|_| js_error("Invalid font data"))?;
+        let charmap = font_ref.charmap();
+        // Scenes overwhelmingly use one or two sizes, so a one-entry memo is
+        // enough to stop re-deriving metrics per node.
+        let mut sized: Option<(f32, Metrics, GlyphMetrics<'_>)> = None;
 
         while let Some(op) = decoder.next_opcode()? {
             match op {
@@ -220,13 +297,6 @@ impl RendererHandle {
                     let a = decoder.read_f32()?;
 
                     let color = Color::new([r, g, b, (a * opacity).clamp(0.0, 1.0)]);
-                    let rect = RoundedRect::new(
-                        ox as f64,
-                        oy as f64,
-                        (ox + width) as f64,
-                        (oy + height) as f64,
-                        radius as f64,
-                    );
                     let affine = Affine::new([
                         transform[0] as f64,
                         transform[1] as f64,
@@ -236,7 +306,30 @@ impl RendererHandle {
                         transform[5] as f64,
                     ]);
 
-                    self.scene.fill(Fill::NonZero, affine, color, None, &rect);
+                    // `RoundedRect` resolves to four lines plus four arcs, and
+                    // each arc costs transcendentals to turn into cubics. The
+                    // two shapes people actually ask for most — a plain
+                    // rectangle and a full-radius dot — have cheaper exact
+                    // forms, and a particle field is thirty thousand dots.
+                    let x0 = ox as f64;
+                    let y0 = oy as f64;
+                    let x1 = (ox + width) as f64;
+                    let y1 = (oy + height) as f64;
+                    let w = (width as f64).abs();
+                    let h = (height as f64).abs();
+                    let r = (radius as f64).max(0.0);
+
+                    if r <= 0.0 {
+                        let rect = Rect::new(x0, y0, x1, y1);
+                        self.scene.fill(Fill::NonZero, affine, color, None, &rect);
+                    } else if (w - h).abs() < f64::EPSILON && r * 2.0 >= w {
+                        let radius = w * 0.5;
+                        let circle = Circle::new((x0 + radius, y0 + radius), radius);
+                        self.scene.fill(Fill::NonZero, affine, color, None, &circle);
+                    } else {
+                        let rect = RoundedRect::new(x0, y0, x1, y1, r);
+                        self.scene.fill(Fill::NonZero, affine, color, None, &rect);
+                    }
                 }
                 OpCode::Path => {
                     let opacity = decoder.read_f32()?;
@@ -279,24 +372,36 @@ impl RendererHandle {
 
                     // Read path data
                     let path_len = decoder.read_u32()?;
-                    let path_str = decoder.read_string(path_len as usize)?;
+                    let path_str = decoder.read_str(path_len as usize)?;
 
-                    // Parse SVG path string
-                    if let Ok(bez_path) = BezPath::from_svg(&path_str) {
-                        let fill_style = if fill_rule == 1 {
-                            Fill::EvenOdd
-                        } else {
-                            Fill::NonZero
+                    if !paths.contains_key(path_str) {
+                        // A scene that generates a fresh path string every frame
+                        // would otherwise grow this without bound.
+                        if paths.len() >= PATH_CACHE_LIMIT {
+                            paths.clear();
+                        }
+                        let Ok(parsed) = BezPath::from_svg(path_str) else {
+                            continue;
                         };
+                        paths.insert(path_str.to_owned(), parsed);
+                    }
+                    let Some(bez_path) = paths.get(path_str) else {
+                        continue;
+                    };
 
-                        if let Some(color) = fill_color {
-                            self.scene.fill(fill_style, affine, color, None, &bez_path);
-                        }
+                    let fill_style = if fill_rule == 1 {
+                        Fill::EvenOdd
+                    } else {
+                        Fill::NonZero
+                    };
 
-                        if let Some((width, color)) = stroke_info {
-                            let stroke = Stroke::new(width as f64);
-                            self.scene.stroke(&stroke, affine, color, None, &bez_path);
-                        }
+                    if let Some(color) = fill_color {
+                        self.scene.fill(fill_style, affine, color, None, bez_path);
+                    }
+
+                    if let Some((width, color)) = stroke_info {
+                        let stroke = Stroke::new(width as f64);
+                        self.scene.stroke(&stroke, affine, color, None, bez_path);
                     }
                 }
                 OpCode::Text => {
@@ -313,7 +418,7 @@ impl RendererHandle {
                     let b = decoder.read_f32()?;
                     let a = decoder.read_f32()?;
                     let text_len = decoder.read_u32()?;
-                    let text = decoder.read_string(text_len as usize)?;
+                    let text = decoder.read_str(text_len as usize)?;
 
                     if text.is_empty() {
                         continue;
@@ -324,11 +429,16 @@ impl RendererHandle {
                     } else {
                         16.0
                     };
-                    let font_ref = FontRef::from_index(self.font.data.as_ref(), self.font.index)
-                        .map_err(|_| js_error("Invalid font data"))?;
-                    let size = Size::new(font_size);
-                    let metrics = font_ref.metrics(size, LocationRef::default());
-                    let glyph_metrics = font_ref.glyph_metrics(size, LocationRef::default());
+                    if sized.as_ref().is_none_or(|(cached, _, _)| *cached != font_size) {
+                        let size = Size::new(font_size);
+                        sized = Some((
+                            font_size,
+                            font_ref.metrics(size, LocationRef::default()),
+                            font_ref.glyph_metrics(size, LocationRef::default()),
+                        ));
+                    }
+                    let (_, metrics, glyph_metrics) =
+                        sized.as_ref().ok_or_else(|| js_error("Missing font metrics"))?;
                     let ascent = if metrics.ascent.is_finite() {
                         metrics.ascent
                     } else {
@@ -359,8 +469,7 @@ impl RendererHandle {
                         }
                     };
 
-                    let charmap = font_ref.charmap();
-                    let lines = wrap_text_lines(&text, max_width, &charmap, &glyph_metrics, fallback_width);
+                    let lines = wrap_text_lines(text, max_width, &charmap, glyph_metrics, fallback_width);
                     if lines.is_empty() {
                         continue;
                     }
@@ -375,7 +484,9 @@ impl RendererHandle {
                         transform[5] as f64,
                     ]);
 
-                    let mut glyphs = Vec::new();
+                    // One glyph per char at most; `char_indices` would be a
+                    // second pass just to count, and `len()` is a safe ceiling.
+                    let mut glyphs = Vec::with_capacity(text.len());
                     let mut y = oy + ascent;
                     for line in lines {
                         let offset_x = align_offset(align, max_width, line.width);
@@ -476,7 +587,10 @@ impl RendererHandle {
                     view: &view,
                     resolve_target: None,
                     ops: wgpu::Operations {
-                        load: wgpu::LoadOp::Load,
+                        // The blit is a fullscreen triangle, so every pixel is
+                        // overwritten. Loading first only costs a tile read,
+                        // which is real bandwidth on mobile and Apple silicon.
+                        load: wgpu::LoadOp::Clear(wgpu::Color::TRANSPARENT),
                         store: wgpu::StoreOp::Store,
                     },
                     depth_slice: None,
@@ -680,8 +794,10 @@ impl TextAlign {
     }
 }
 
-struct LineLayout {
-    text: String,
+/// Borrows out of the text being laid out. Wrapping picks break points, it does
+/// not rewrite the string, so there is nothing here worth owning.
+struct LineLayout<'a> {
+    text: &'a str,
     width: f32,
 }
 
@@ -745,14 +861,15 @@ impl<'a> Decoder<'a> {
         Ok(u32::from_le_bytes(chunk.try_into().unwrap()))
     }
 
-    fn read_string(&mut self, len: usize) -> Result<String, JsValue> {
+    /// Borrows out of the frame buffer rather than copying. A path or a text run
+    /// is read once and used immediately, so there is no reason to own it.
+    fn read_str(&mut self, len: usize) -> Result<&'a str, JsValue> {
         if self.remaining() < len {
             return Err(JsValue::from_str("Unexpected end of buffer"));
         }
         let bytes = &self.data[self.offset..self.offset + len];
         self.offset += len;
-        String::from_utf8(bytes.to_vec())
-            .map_err(|_| JsValue::from_str("Invalid UTF-8 in path data"))
+        std::str::from_utf8(bytes).map_err(|_| JsValue::from_str("Invalid UTF-8 in frame data"))
     }
 }
 
@@ -796,13 +913,19 @@ fn measure_text_width(
     width
 }
 
-fn wrap_text_lines(
-    text: &str,
+/// Byte offset of `part` within `whole`. Sound only for slices produced from
+/// `whole`, which is the case for everything `split_whitespace` yields.
+fn offset_in(whole: &str, part: &str) -> usize {
+    part.as_ptr() as usize - whole.as_ptr() as usize
+}
+
+fn wrap_text_lines<'a>(
+    text: &'a str,
     max_width: f32,
     charmap: &Charmap<'_>,
     glyph_metrics: &GlyphMetrics<'_>,
     fallback_width: f32,
-) -> Vec<LineLayout> {
+) -> Vec<LineLayout<'a>> {
     let mut lines = Vec::new();
     let wrap = max_width.is_finite() && max_width > 0.0;
     let space_width = measure_text_width(" ", charmap, glyph_metrics, fallback_width);
@@ -811,51 +934,59 @@ fn wrap_text_lines(
         if !wrap {
             let width = measure_text_width(raw_line, charmap, glyph_metrics, fallback_width);
             lines.push(LineLayout {
-                text: raw_line.to_string(),
+                text: raw_line,
                 width,
             });
             continue;
         }
 
-        let words: Vec<&str> = raw_line.split_whitespace().collect();
-        if words.is_empty() {
-            lines.push(LineLayout {
-                text: String::new(),
-                width: 0.0,
-            });
-            continue;
-        }
-
-        let mut current = String::new();
+        // Each line is a range of the source rather than a rebuilt string, so
+        // the author's own spacing survives instead of being collapsed.
+        let mut start: Option<usize> = None;
+        let mut end = 0usize;
         let mut current_width = 0.0;
+        let mut pushed = false;
 
-        for word in words {
+        for word in raw_line.split_whitespace() {
+            let word_start = offset_in(raw_line, word);
+            let word_end = word_start + word.len();
             let word_width = measure_text_width(word, charmap, glyph_metrics, fallback_width);
-            if current.is_empty() {
-                current.push_str(word);
+
+            let Some(line_start) = start else {
+                start = Some(word_start);
+                end = word_end;
                 current_width = word_width;
                 continue;
-            }
+            };
 
             let next_width = current_width + space_width + word_width;
             if next_width <= max_width {
-                current.push(' ');
-                current.push_str(word);
+                end = word_end;
                 current_width = next_width;
             } else {
                 lines.push(LineLayout {
-                    text: current,
+                    text: &raw_line[line_start..end],
                     width: current_width,
                 });
-                current = word.to_string();
+                pushed = true;
+                start = Some(word_start);
+                end = word_end;
                 current_width = word_width;
             }
         }
 
-        lines.push(LineLayout {
-            text: current,
-            width: current_width,
-        });
+        match start {
+            Some(line_start) => lines.push(LineLayout {
+                text: &raw_line[line_start..end],
+                width: current_width,
+            }),
+            // A blank line still occupies a line box.
+            None if !pushed => lines.push(LineLayout {
+                text: "",
+                width: 0.0,
+            }),
+            None => {}
+        }
     }
 
     lines
@@ -874,7 +1005,21 @@ fn align_offset(align: TextAlign, max_width: f32, line_width: f32) -> f32 {
     }
 }
 
+/// No-op unless the `debug-panics` feature is on, which keeps the panic
+/// formatting machinery out of the shipped binary.
+fn install_panic_hook() {
+    #[cfg(feature = "debug-panics")]
+    console_error_panic_hook::set_once();
+}
+
+/// The module's linear memory, so JS can build views over the frame buffer that
+/// `ops_reserve` hands out pointers into.
+#[wasm_bindgen]
+pub fn wasm_memory() -> JsValue {
+    wasm_bindgen::memory()
+}
+
 #[wasm_bindgen(start)]
 pub fn wasm_start() {
-    console_error_panic_hook::set_once();
+    install_panic_hook();
 }

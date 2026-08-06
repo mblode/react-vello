@@ -1,5 +1,9 @@
 import type { CSSProperties, ReactNode } from "react";
 
+import type { FrameStats } from "./stats";
+
+export type { FrameStats, Percentiles } from "./stats";
+
 export type Vec2 = readonly [number, number];
 export type Mat3 = readonly [number, number, number, number, number, number];
 
@@ -140,6 +144,11 @@ export interface CanvasContext {
   canvas: HTMLCanvasElement;
   presentationSize: Vec2;
   requestFrame(): void;
+  /**
+   * Per-stage frame timings, or `null` unless the root was created with
+   * `debug: true`.
+   */
+  getStats(): FrameStats | null;
   readPixels(
     target: Uint8Array,
     rect?: { origin: Vec2; size: Vec2 }

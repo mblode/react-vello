@@ -262,29 +262,39 @@ export function create_renderer(canvas) {
   return ret;
 }
 
+/**
+ * The module's linear memory, so JS can build views over the frame buffer that
+ * `ops_reserve` hands out pointers into.
+ * @returns {any}
+ */
+export function wasm_memory() {
+  const ret = wasm.wasm_memory();
+  return ret;
+}
+
 export function wasm_start() {
   wasm.wasm_start();
 }
 
-function wasm_bindgen__convert__closures_____invoke__h1e3f4f5e5b6e003f(
+function wasm_bindgen__convert__closures_____invoke__h00bea32f875544c4(
   arg0,
   arg1,
   arg2
 ) {
-  wasm.wasm_bindgen__convert__closures_____invoke__h1e3f4f5e5b6e003f(
+  wasm.wasm_bindgen__convert__closures_____invoke__h00bea32f875544c4(
     arg0,
     arg1,
     arg2
   );
 }
 
-function wasm_bindgen__convert__closures_____invoke__h2a0f84921f614cc0(
+function wasm_bindgen__convert__closures_____invoke__h4ad653f24082db39(
   arg0,
   arg1,
   arg2,
   arg3
 ) {
-  wasm.wasm_bindgen__convert__closures_____invoke__h2a0f84921f614cc0(
+  wasm.wasm_bindgen__convert__closures_____invoke__h4ad653f24082db39(
     arg0,
     arg1,
     arg2,
@@ -585,10 +595,28 @@ export class RendererHandle {
     wasm.__wbg_rendererhandle_free(ptr, 0);
   }
   /**
-   * @param {Uint8Array} ops
+   * Grows the frame buffer to at least `len` bytes and hands back a pointer
+   * into linear memory.
+   *
+   * Existing contents survive — `Vec::resize` copies them to the new
+   * allocation and `memory.grow` preserves the old pages — so JS can call
+   * this part-way through encoding a frame, re-derive its view, and carry on
+   * writing where it left off.
+   * @param {number} len
+   * @returns {number}
    */
-  apply(ops) {
-    const ret = wasm.rendererhandle_apply(this.__wbg_ptr, ops);
+  ops_reserve(len) {
+    const ret = wasm.rendererhandle_ops_reserve(this.__wbg_ptr, len);
+    return ret >>> 0;
+  }
+  /**
+   * Decodes the first `len` bytes already sitting in the frame buffer, then
+   * presents. One boundary crossing per frame, and nothing copied to get
+   * here.
+   * @param {number} len
+   */
+  apply_and_render(len) {
+    const ret = wasm.rendererhandle_apply_and_render(this.__wbg_ptr, len);
     if (ret[1]) {
       throw takeFromExternrefTable0(ret[0]);
     }
@@ -683,6 +711,10 @@ function __wbg_get_imports() {
   };
   imports.wbg.__wbg___wbindgen_is_undefined_2d472862bd29a478 = function (arg0) {
     const ret = arg0 === undefined;
+    return ret;
+  };
+  imports.wbg.__wbg___wbindgen_memory_27faa6e0e73716bd = function () {
+    const ret = wasm.memory;
     return ret;
   };
   imports.wbg.__wbg___wbindgen_string_get_e4f06c90489ad01b = function (
@@ -861,17 +893,6 @@ function __wbg_get_imports() {
   imports.wbg.__wbg_end_ece2bf3a25678f12 = function (arg0) {
     arg0.end();
   };
-  imports.wbg.__wbg_error_7534b8e9a36f1ab4 = function (arg0, arg1) {
-    let deferred0_0;
-    let deferred0_1;
-    try {
-      deferred0_0 = arg0;
-      deferred0_1 = arg1;
-      console.error(getStringFromWasm0(arg0, arg1));
-    } finally {
-      wasm.__wbindgen_free(deferred0_0, deferred0_1, 1);
-    }
-  };
   imports.wbg.__wbg_features_1e615dfe5ee66265 = function (arg0) {
     const ret = arg0.features;
     return ret;
@@ -966,10 +987,6 @@ function __wbg_get_imports() {
     const len1 = WASM_VECTOR_LEN;
     getDataViewMemory0().setInt32(arg0 + 4 * 1, len1, true);
     getDataViewMemory0().setInt32(arg0 + 4 * 0, ptr1, true);
-  };
-  imports.wbg.__wbg_length_69bca3cb64fc8748 = function (arg0) {
-    const ret = arg0.length;
-    return ret;
   };
   imports.wbg.__wbg_limits_79ab67d5f10db979 = function (arg0) {
     const ret = arg0.limits;
@@ -1137,7 +1154,7 @@ function __wbg_get_imports() {
         const a = state0.a;
         state0.a = 0;
         try {
-          return wasm_bindgen__convert__closures_____invoke__h2a0f84921f614cc0(
+          return wasm_bindgen__convert__closures_____invoke__h4ad653f24082db39(
             a,
             state0.b,
             arg0,
@@ -1153,10 +1170,6 @@ function __wbg_get_imports() {
       state0.a = state0.b = 0;
     }
   };
-  imports.wbg.__wbg_new_8a6f238a6ece86ea = function () {
-    const ret = new Error();
-    return ret;
-  };
   imports.wbg.__wbg_new_e17d9f43105b08be = function () {
     const ret = new Array();
     return ret;
@@ -1168,13 +1181,6 @@ function __wbg_get_imports() {
   imports.wbg.__wbg_new_no_args_ee98eee5275000a4 = function (arg0, arg1) {
     const ret = new Function(getStringFromWasm0(arg0, arg1));
     return ret;
-  };
-  imports.wbg.__wbg_prototypesetcall_2a6620b6922694b2 = function (
-    arg0,
-    arg1,
-    arg2
-  ) {
-    Uint8Array.prototype.set.call(getArrayU8FromWasm0(arg0, arg1), arg2);
   };
   imports.wbg.__wbg_push_df81a39d04db858c = function (arg0, arg1) {
     const ret = arg0.push(arg1);
@@ -1926,17 +1932,6 @@ function __wbg_get_imports() {
   imports.wbg.__wbg_set_z_a136ba9bd16085f0 = function (arg0, arg1) {
     arg0.z = arg1 >>> 0;
   };
-  imports.wbg.__wbg_stack_0ed75d68575b0f3c = function (arg0, arg1) {
-    const ret = arg1.stack;
-    const ptr1 = passStringToWasm0(
-      ret,
-      wasm.__wbindgen_malloc,
-      wasm.__wbindgen_realloc
-    );
-    const len1 = WASM_VECTOR_LEN;
-    getDataViewMemory0().setInt32(arg0 + 4 * 1, len1, true);
-    getDataViewMemory0().setInt32(arg0 + 4 * 0, ptr1, true);
-  };
   imports.wbg.__wbg_static_accessor_GLOBAL_89e1d9ac6a1b250e = function () {
     const ret = typeof global === "undefined" ? null : global;
     return isLikeNone(ret) ? 0 : addToExternrefTable0(ret);
@@ -1983,19 +1978,19 @@ function __wbg_get_imports() {
     const ret = getStringFromWasm0(arg0, arg1);
     return ret;
   };
-  imports.wbg.__wbindgen_cast_443332637da6f2f5 = function (arg0, arg1) {
-    // Cast intrinsic for `Closure(Closure { dtor_idx: 160, function: Function { arguments: [Externref], shim_idx: 161, ret: Unit, inner_ret: Some(Unit) }, mutable: true }) -> Externref`.
-    const ret = makeMutClosure(
-      arg0,
-      arg1,
-      wasm.wasm_bindgen__closure__destroy__hb8467f3e511a960c,
-      wasm_bindgen__convert__closures_____invoke__h1e3f4f5e5b6e003f
-    );
-    return ret;
-  };
   imports.wbg.__wbindgen_cast_d6cd19b81560fd6e = function (arg0) {
     // Cast intrinsic for `F64 -> Externref`.
     const ret = arg0;
+    return ret;
+  };
+  imports.wbg.__wbindgen_cast_f13042ea3a3ac77a = function (arg0, arg1) {
+    // Cast intrinsic for `Closure(Closure { dtor_idx: 157, function: Function { arguments: [Externref], shim_idx: 158, ret: Unit, inner_ret: Some(Unit) }, mutable: true }) -> Externref`.
+    const ret = makeMutClosure(
+      arg0,
+      arg1,
+      wasm.wasm_bindgen__closure__destroy__h672b61b92ad0ee27,
+      wasm_bindgen__convert__closures_____invoke__h00bea32f875544c4
+    );
     return ret;
   };
   imports.wbg.__wbindgen_init_externref_table = function () {
