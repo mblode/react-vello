@@ -33,7 +33,9 @@ export function InfoPanel({
         className
       )}
     >
-      <h2 className="font-medium text-muted-foreground text-xs">{label}</h2>
+      {/* This is the route's `h1`: the header carries the wordmark, not the
+          page name, so the heading that names the page lives here. */}
+      <h1 className="font-medium text-muted-foreground text-xs">{label}</h1>
       <p className="mt-1 text-pretty text-sm leading-relaxed">{summary}</p>
 
       {children}
