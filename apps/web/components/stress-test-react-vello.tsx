@@ -13,24 +13,23 @@ import {
 import { StressTestShell } from "@/components/stress-test-shell";
 import { VelloSurface, type VelloScene } from "@/components/vello-surface";
 import {
-  getParticleColor,
   getParticlePulse,
-  STRESS_BG,
+  getParticleRadius,
   useParticleSimulation,
 } from "@/lib/particles";
+import { CANVAS_BG, getParticleColor } from "@/lib/scene-colors";
 
 type MutableRectNode = NodeRef & { props: RectProps };
 
 export function StressTestReactVello() {
   return (
     <StressTestShell
-      about={[
-        "All three benchmark pages run the same simulation: round particles drifting upward and twinkling, a slider from 1,000 to 30,000 of them, and a rolling average of the frame rate. This page draws them with React Vello, so the scene graph is encoded in Rust compiled to WebAssembly and rasterised on the GPU by Vello through WebGPU.",
-        "React is deliberately kept out of the frame loop. Reconciling 30,000 components at 60fps would cost far more than the drawing does, so the particles are mounted once and each frame writes to the scene nodes' props through refs before asking the canvas for a redraw. The Konva page does exactly the same thing, which is what keeps the comparison honest: the variable across the three pages is the renderer, not how hard React is working. Drag the slider up and watch for the point where the frame rate starts to give.",
+      detail={[
+        "The scene graph is encoded in Rust compiled to WebAssembly, then rasterised on the GPU by Vello through WebGPU.",
+        "React is kept out of the frame loop. Reconciling 30,000 components at 60fps would cost more than the drawing does, so particles mount once and each frame writes to the scene nodes' props through refs before asking for a redraw. The Konva page does the same, so the variable across the three pages is the renderer, not how hard React is working.",
       ]}
-      description="Same particle simulation, Vello renderer."
-      subtitle="WebGPU Scene Graph"
-      title="React Vello"
+      label="React Vello"
+      summary="The shared particle simulation, drawn by Vello on the GPU."
     >
       {({ particleCount, onFps }) => (
         <VelloParticles onFps={onFps} particleCount={particleCount} />
@@ -59,7 +58,12 @@ function VelloParticles({
     [particleCount, onFps]
   );
 
-  return <VelloSurface scene={scene} />;
+  return (
+    <VelloSurface
+      label={`Particle field of ${particleCount.toLocaleString()} points rendered with Vello`}
+      scene={scene}
+    />
+  );
 }
 
 interface VelloParticleFieldProps {
@@ -111,7 +115,7 @@ function VelloParticleField({
           continue;
         }
         const pulse = getParticlePulse(timeSeconds, particle.twinkle);
-        const radius = particle.size * (0.8 + 0.3 * pulse);
+        const radius = getParticleRadius(particle, pulse);
         const props = node.props;
         const origin = props.origin as [number, number] | undefined;
         const size = props.size as [number, number] | undefined;
@@ -130,7 +134,7 @@ function VelloParticleField({
   });
 
   return (
-    <Canvas backgroundColor={STRESS_BG} height={height} width={width}>
+    <Canvas backgroundColor={CANVAS_BG} height={height} width={width}>
       <Group listening={false}>
         {particleKeys.map((key, index) => (
           <Rect

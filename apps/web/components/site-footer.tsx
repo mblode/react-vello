@@ -1,20 +1,21 @@
+import { BASE_PATH } from "@/lib/routes";
+
 export function SiteFooter() {
   return (
     <a
-      className="-translate-x-1/2 fixed bottom-3 left-1/2 z-50 inline-flex items-center gap-2 text-foreground/70 text-sm no-underline"
+      className="absolute right-4 bottom-4 z-10 inline-flex items-center gap-2 rounded-full border border-border bg-card/85 py-1 pr-3 pl-1 text-muted-foreground text-xs no-underline backdrop-blur-md transition-colors hover:text-foreground"
       href="https://blode.co"
       rel="author"
     >
-      Crafted by
       {/** biome-ignore lint/performance/noImgElement: a 20px static avatar does not need the Next image pipeline */}
       <img
-        alt="Matthew Blode"
+        alt=""
         className="rounded-full"
         height={20}
-        src="/react-vello/avatar-sm.png"
+        src={`${BASE_PATH}/avatar-sm.png`}
         width={20}
       />
-      Matthew Blode
+      Crafted by Matthew Blode
     </a>
   );
 }

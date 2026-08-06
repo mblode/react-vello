@@ -1,20 +1,11 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef } from "react";
 
 export const PARTICLE_COUNT_MIN = 1000;
 export const PARTICLE_COUNT_MAX = 30_000;
 export const PARTICLE_COUNT_STEP = 500;
 export const PARTICLE_COUNT_DEFAULT = 8000;
-export const STRESS_BG = "#05070d";
-
-const PARTICLE_PALETTE = [
-  "#38bdf8",
-  "#f472b6",
-  "#facc15",
-  "#a7f3d0",
-  "#c4b5fd",
-];
 
 const MAX_FRAME_DELTA_SECONDS = 0.05;
 const FPS_SAMPLE_MS = 500;
@@ -26,7 +17,6 @@ export interface Particle {
   speed: number;
   drift: number;
   twinkle: number;
-  color: string;
   opacity: number;
 }
 
@@ -45,27 +35,20 @@ interface ParticleSimulationOptions {
   onFrame?: (frame: ParticleFrame) => void;
 }
 
-export function clamp(value: number, min: number, max: number): number {
-  return Math.min(max, Math.max(min, value));
-}
-
 export function getParticlePulse(timeSeconds: number, twinkle: number): number {
   return 0.6 + 0.4 * Math.sin(timeSeconds * 2 + twinkle);
 }
 
-export function getParticleColor(index: number): string {
-  return PARTICLE_PALETTE[index % PARTICLE_PALETTE.length] ?? "#38bdf8";
+/** The radius each renderer draws this frame, so all three agree on size. */
+export function getParticleRadius(particle: Particle, pulse: number): number {
+  return particle.size * (0.8 + 0.3 * pulse);
 }
 
 function randomBetween(min: number, max: number): number {
   return min + Math.random() * (max - min);
 }
 
-function createParticle(
-  width: number,
-  height: number,
-  index: number
-): Particle {
+function createParticle(width: number, height: number): Particle {
   return {
     x: Math.random() * width,
     y: Math.random() * height,
@@ -73,7 +56,6 @@ function createParticle(
     speed: randomBetween(120, 520),
     drift: randomBetween(-35, 35),
     twinkle: randomBetween(0, Math.PI * 2),
-    color: getParticleColor(index),
     opacity: randomBetween(0.4, 0.85),
   };
 }
@@ -103,24 +85,6 @@ function updateParticle(
   ) {
     resetParticle(particle, width, height);
   }
-}
-
-export function useViewportSize() {
-  const [size, setSize] = useState(() => ({
-    width: typeof window === "undefined" ? 0 : window.innerWidth,
-    height: typeof window === "undefined" ? 0 : window.innerHeight,
-  }));
-
-  useEffect(() => {
-    const handleResize = () => {
-      setSize({ width: window.innerWidth, height: window.innerHeight });
-    };
-    handleResize();
-    window.addEventListener("resize", handleResize);
-    return () => window.removeEventListener("resize", handleResize);
-  }, []);
-
-  return size;
 }
 
 export function useParticleSimulation({
@@ -165,7 +129,7 @@ export function useParticleSimulation({
     const particles = particlesRef.current;
     if (particles.length < particleCount) {
       for (let i = particles.length; i < particleCount; i += 1) {
-        particles.push(createParticle(width, height, i));
+        particles.push(createParticle(width, height));
       }
     } else if (particles.length > particleCount) {
       particles.length = particleCount;

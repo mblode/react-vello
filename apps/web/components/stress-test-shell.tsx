@@ -2,59 +2,81 @@
 
 import { type ReactNode, useCallback, useState } from "react";
 
-import { ParticleStressHud } from "@/components/particle-stress-hud";
+import { InfoPanel } from "@/components/info-panel";
+import { Slider } from "@/components/ui/slider";
 import {
-  clamp,
   PARTICLE_COUNT_DEFAULT,
   PARTICLE_COUNT_MAX,
   PARTICLE_COUNT_MIN,
+  PARTICLE_COUNT_STEP,
 } from "@/lib/particles";
+import { clamp } from "@/lib/utils";
 
-interface StressTestShellProps {
-  title: string;
-  subtitle: string;
-  description: string;
-  /** Prose for the HUD. See `AboutPanel` for why it lives in the overlay. */
-  about: readonly string[];
-  children: (args: {
-    particleCount: number;
-    onFps: (fps: number) => void;
-  }) => ReactNode;
-}
+/** Stated here rather than repeated on all three benchmark pages. */
+const BENCHMARK_BASIS =
+  "All three benchmark pages run the same simulation: particles drifting upward and twinkling, a slider from 1,000 to 30,000 of them, and a rolling average of the frame rate.";
 
 /**
  * Owns the particle count and FPS readout shared by all three benchmarks, so
  * each renderer only has to supply its own view of the same simulation.
  */
 export function StressTestShell({
-  title,
-  subtitle,
-  description,
-  about,
+  label,
+  summary,
+  detail,
   children,
-}: StressTestShellProps) {
+}: {
+  label: string;
+  summary: string;
+  detail: readonly string[];
+  children: (args: {
+    particleCount: number;
+    onFps: (fps: number) => void;
+  }) => ReactNode;
+}) {
   const [particleCount, setParticleCount] = useState(PARTICLE_COUNT_DEFAULT);
-  const [fps, setFps] = useState(0);
-
-  const handleCountChange = (value: number) => {
-    setParticleCount(clamp(value, PARTICLE_COUNT_MIN, PARTICLE_COUNT_MAX));
-  };
+  // null until the first sample lands. A `0` sentinel would be indistinguishable
+  // from a real reading of 0, which is exactly what a heavily throttled tab
+  // reports — the one case where the number matters most.
+  const [fps, setFps] = useState<number | null>(null);
 
   const onFps = useCallback((value: number) => setFps(value), []);
 
   return (
     <>
       {children({ particleCount, onFps })}
-      <ParticleStressHud
-        about={about}
-        count={particleCount}
-        countLabel="Particles"
-        description={description}
-        fps={fps}
-        onCountChange={handleCountChange}
-        subtitle={subtitle}
-        title={title}
-      />
+      <InfoPanel
+        detail={[BENCHMARK_BASIS, ...detail]}
+        label={label}
+        summary={summary}
+      >
+        <dl className="mt-4 space-y-3">
+          <div className="flex items-baseline justify-between gap-2">
+            <dt className="text-muted-foreground text-xs">Particles</dt>
+            <dd className="font-mono text-sm tabular-nums">
+              {particleCount.toLocaleString()}
+            </dd>
+          </div>
+          <Slider
+            aria-label="Particle count"
+            max={PARTICLE_COUNT_MAX}
+            min={PARTICLE_COUNT_MIN}
+            onValueChange={(value) => {
+              if (typeof value[0] === "number") {
+                setParticleCount(
+                  clamp(value[0], PARTICLE_COUNT_MIN, PARTICLE_COUNT_MAX)
+                );
+              }
+            }}
+            step={PARTICLE_COUNT_STEP}
+            value={[particleCount]}
+          />
+          <div className="flex items-baseline justify-between gap-2">
+            <dt className="text-muted-foreground text-xs">Frames per second</dt>
+            <dd className="font-mono text-lg tabular-nums">{fps ?? "--"}</dd>
+          </div>
+        </dl>
+      </InfoPanel>
     </>
   );
 }

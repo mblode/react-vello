@@ -5,21 +5,21 @@ import { useEffect, useMemo, useRef } from "react";
 import { StressTestShell } from "@/components/stress-test-shell";
 import {
   getParticlePulse,
-  STRESS_BG,
+  getParticleRadius,
   useParticleSimulation,
-  useViewportSize,
 } from "@/lib/particles";
+import { CANVAS_BG, getParticleColor } from "@/lib/scene-colors";
+import { useViewportSize } from "@/lib/use-viewport-size";
 
 export function StressTestReactDom() {
   return (
     <StressTestShell
-      about={[
-        "The same particle simulation again, this time as plain DOM: one absolutely positioned div per particle, moved each frame by writing transform and opacity straight onto the element's style.",
-        "This is the control in the experiment, and it is not a strawman. It is written the way you would write it if you wanted it to be fast: the elements are created once, colour and border radius are set once and never touched again, will-change is declared up front, and the per-frame work is a translate3d rather than top and left. It still falls over long before the other two, because each particle is a real layout object the browser has to style, composite and hit-test, and none of that work goes away just because you avoided a reflow. Start at 1,000 and drag upward. The number worth noting is not where it breaks but how early it starts to slip.",
+      detail={[
+        "This is the control, and it is not a strawman. Elements are created once, colour and border radius are set once, will-change is declared up front, and the per-frame work is a translate3d rather than top and left.",
+        "It still falls over long before the other two. Each particle is a real layout object the browser has to style, composite and hit-test, and none of that work goes away because you avoided a reflow.",
       ]}
-      description="Same particle simulation, DOM nodes."
-      subtitle="DOM Particle Field"
-      title="React DOM"
+      label="React DOM"
+      summary="The shared particle simulation, one absolutely positioned div per particle."
     >
       {({ particleCount, onFps }) => (
         <DomParticleField onFps={onFps} particleCount={particleCount} />
@@ -78,13 +78,13 @@ function DomParticleField({
           continue;
         }
         if (!ready[i]) {
-          element.style.backgroundColor = particle.color;
+          element.style.backgroundColor = getParticleColor(i);
           element.style.borderRadius = "999px";
           element.style.willChange = "transform, opacity";
           ready[i] = true;
         }
         const pulse = getParticlePulse(timeSeconds, particle.twinkle);
-        const radius = particle.size * (0.8 + 0.3 * pulse);
+        const radius = getParticleRadius(particle, pulse);
         element.style.width = `${radius * 2}px`;
         element.style.height = `${radius * 2}px`;
         element.style.opacity = (particle.opacity * pulse).toFixed(3);
@@ -96,7 +96,7 @@ function DomParticleField({
   return (
     <div
       className="pointer-events-none absolute inset-0"
-      style={{ backgroundColor: STRESS_BG }}
+      style={{ backgroundColor: CANVAS_BG }}
     >
       {particleKeys.map((key, index) => (
         <div

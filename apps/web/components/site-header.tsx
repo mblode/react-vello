@@ -38,12 +38,7 @@ function NavLink({
   children: ReactNode;
 }) {
   return (
-    <Button
-      asChild
-      className="pointer-events-auto"
-      size="sm"
-      variant={isActive ? "secondary" : "ghost"}
-    >
+    <Button asChild size="sm" variant={isActive ? "secondary" : "ghost"}>
       <Link aria-current={isActive ? "page" : undefined} href={href}>
         {children}
       </Link>
@@ -55,11 +50,13 @@ export function SiteHeader() {
   const pathname = usePathname();
 
   return (
-    <header className="pointer-events-none absolute top-4 right-4 left-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-      <h1 className="font-semibold text-foreground/90 text-sm tracking-wide">
+    <header className="absolute inset-x-0 top-0 z-20 flex h-[var(--header-height)] items-center justify-between gap-4 border-border/60 border-b bg-background/70 px-4 backdrop-blur-md">
+      {/* Kept in the accessibility tree at every width; it just yields its
+          pixels to the nav on a phone, where the active tab says where you are. */}
+      <h1 className="sr-only font-medium text-sm sm:not-sr-only sm:truncate">
         {PAGE_HEADINGS[pathname] ?? "React Vello"}
       </h1>
-      <nav className="flex flex-wrap items-center gap-2">
+      <nav className="-mx-1 flex items-center gap-1 overflow-x-auto px-1 [scrollbar-width:none] [&>*]:shrink-0 [&::-webkit-scrollbar]:size-0">
         {NAV_ITEMS.map((item) => (
           <NavLink
             href={item.href}
@@ -69,12 +66,7 @@ export function SiteHeader() {
             {item.label}
           </NavLink>
         ))}
-        <Button
-          asChild
-          className="pointer-events-auto"
-          size="sm"
-          variant="outline"
-        >
+        <Button asChild size="sm" variant="outline">
           <a
             href="https://github.com/mblode/react-vello"
             rel="noreferrer noopener"

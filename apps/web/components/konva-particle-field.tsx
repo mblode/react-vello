@@ -5,12 +5,12 @@ import { useEffect, useMemo, useRef } from "react";
 import { Circle, Layer, Stage } from "react-konva";
 
 import {
-  getParticleColor,
   getParticlePulse,
-  STRESS_BG,
+  getParticleRadius,
   useParticleSimulation,
-  useViewportSize,
 } from "@/lib/particles";
+import { CANVAS_BG, getParticleColor } from "@/lib/scene-colors";
+import { useViewportSize } from "@/lib/use-viewport-size";
 
 export function KonvaParticleField({
   particleCount,
@@ -50,7 +50,7 @@ export function KonvaParticleField({
         }
         const pulse = getParticlePulse(timeSeconds, particle.twinkle);
         node.position({ x: particle.x, y: particle.y });
-        node.radius(particle.size * (0.8 + 0.3 * pulse));
+        node.radius(getParticleRadius(particle, pulse));
         node.opacity(particle.opacity * pulse);
       }
       layerRef.current?.batchDraw();
@@ -60,7 +60,7 @@ export function KonvaParticleField({
   return (
     <div
       className="pointer-events-none absolute inset-0"
-      style={{ backgroundColor: STRESS_BG }}
+      style={{ backgroundColor: CANVAS_BG }}
     >
       <Stage className="absolute inset-0" height={height} width={width}>
         <Layer listening={false} ref={layerRef}>
