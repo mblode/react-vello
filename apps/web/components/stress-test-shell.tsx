@@ -24,16 +24,25 @@ export function StressTestShell({
   label,
   summary,
   detail,
+  maxParticles = PARTICLE_COUNT_MAX,
   children,
 }: {
   label: string;
   summary: string;
   detail: readonly string[];
+  /** Lower this where the renderer stops being able to recover. */
+  maxParticles?: number;
   children: (args: {
     particleCount: number;
     onFps: (fps: number) => void;
   }) => ReactNode;
 }) {
+  // Two values on purpose. `sliderCount` tracks the thumb so the drag stays
+  // smooth and the readout live; `particleCount` only moves once the drag
+  // settles. Mounting the field on every intermediate step meant a drag across
+  // the range fired ~45 reconciliations back to back, which on the DOM page is
+  // ~45 rounds of creating and destroying thousands of real layout objects.
+  const [sliderCount, setSliderCount] = useState(PARTICLE_COUNT_DEFAULT);
   const [particleCount, setParticleCount] = useState(PARTICLE_COUNT_DEFAULT);
   // null until the first sample lands. A `0` sentinel would be indistinguishable
   // from a real reading of 0, which is exactly what a heavily throttled tab
@@ -54,22 +63,29 @@ export function StressTestShell({
           <div className="flex items-baseline justify-between gap-2">
             <dt className="text-muted-foreground text-xs">Particles</dt>
             <dd className="font-mono text-sm tabular-nums">
-              {particleCount.toLocaleString()}
+              {sliderCount.toLocaleString()}
             </dd>
           </div>
           <Slider
             aria-label="Particle count"
-            max={PARTICLE_COUNT_MAX}
+            max={maxParticles}
             min={PARTICLE_COUNT_MIN}
             onValueChange={(value) => {
               if (typeof value[0] === "number") {
+                setSliderCount(
+                  clamp(value[0], PARTICLE_COUNT_MIN, maxParticles)
+                );
+              }
+            }}
+            onValueCommitted={(value) => {
+              if (typeof value[0] === "number") {
                 setParticleCount(
-                  clamp(value[0], PARTICLE_COUNT_MIN, PARTICLE_COUNT_MAX)
+                  clamp(value[0], PARTICLE_COUNT_MIN, maxParticles)
                 );
               }
             }}
             step={PARTICLE_COUNT_STEP}
-            value={[particleCount]}
+            value={[sliderCount]}
           />
           <div className="flex items-baseline justify-between gap-2">
             <dt className="text-muted-foreground text-xs">Frames per second</dt>

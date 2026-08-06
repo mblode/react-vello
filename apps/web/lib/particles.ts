@@ -4,6 +4,14 @@ import { useEffect, useRef } from "react";
 
 export const PARTICLE_COUNT_MIN = 1000;
 export const PARTICLE_COUNT_MAX = 30_000;
+/**
+ * The DOM page stops here. Past roughly this many elements the main thread is
+ * saturated for whole seconds at a time, so the slider stops responding and the
+ * renderer is liable to be killed outright — you cannot even drag back down.
+ * That ceiling is the page's finding, so it states it rather than demonstrating
+ * it by hanging the tab.
+ */
+export const PARTICLE_COUNT_MAX_DOM = 12_000;
 export const PARTICLE_COUNT_STEP = 500;
 export const PARTICLE_COUNT_DEFAULT = 8000;
 

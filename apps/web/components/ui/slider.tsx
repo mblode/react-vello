@@ -8,11 +8,13 @@ import { cn } from "@/lib/utils";
 
 type SliderProps = Omit<
   React.ComponentProps<typeof SliderPrimitive.Root>,
-  "defaultValue" | "onValueChange" | "value"
+  "defaultValue" | "onValueChange" | "onValueCommitted" | "value"
 > & {
   value?: number[];
   defaultValue?: number[];
   onValueChange?: (value: number[]) => void;
+  /** Fires once the drag or keypress settles, not on every intermediate step. */
+  onValueCommitted?: (value: number[]) => void;
   showValue?: boolean;
   showOrigin?: boolean;
 };
@@ -21,6 +23,7 @@ const Slider = ({
   className,
   defaultValue,
   onValueChange,
+  onValueCommitted,
   value,
   min = 0,
   max = 100,
@@ -50,6 +53,11 @@ const Slider = ({
       min={min}
       onValueChange={(nextValue) =>
         onValueChange?.(Array.isArray(nextValue) ? [...nextValue] : [nextValue])
+      }
+      onValueCommitted={(nextValue) =>
+        onValueCommitted?.(
+          Array.isArray(nextValue) ? [...nextValue] : [nextValue]
+        )
       }
       value={value}
       {...props}
