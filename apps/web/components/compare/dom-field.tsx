@@ -1,8 +1,8 @@
 "use client";
 
-import { useEffect, useMemo, useRef } from "react";
+import { useCallback, useEffect, useMemo, useRef } from "react";
 
-import { StressTestShell } from "@/components/stress-test-shell";
+import { useCompare } from "@/components/compare/compare-context";
 import {
   getParticlePulse,
   getParticleRadius,
@@ -16,60 +16,40 @@ import { useViewportSize } from "@/lib/use-viewport-size";
 const DOT_BASE_PX = 8;
 const DOT_HALF_PX = DOT_BASE_PX / 2;
 
-export function StressTestReactDom() {
-  return (
-    <StressTestShell
-      detail={[
-        "This is the control, and it is not a strawman. Elements are created once, colour, size and border radius are set once, and the per-frame work is a transform and an opacity, never top and left or a width.",
-        "Two things that look like optimisations are deliberately left out. Writing width and height each frame invalidates layout for every particle, so the pulse rides on the transform instead. And will-change is off: it buys a compositor layer per element, which helps for a handful and exhausts GPU memory at thirty thousand.",
-        "It still falls over long before the other two, which is why this slider stops at 12,000 while the other two run to 30,000. Each particle is a real layout object the browser has to style, composite and hit-test, and none of that goes away because you avoided a reflow. Past about 12,000 the main thread is busy for whole seconds at a time: the slider stops responding, so you cannot even drag back down, and the tab is liable to be killed. Set 12,000 here, then set the same on the Vello page.",
-      ]}
-      label="React DOM"
-      maxParticles={PARTICLE_COUNT_MAX_DOM}
-      summary="Drawn by the DOM: one absolutely positioned div per particle."
-    >
-      {({ particleCount, onFps }) => (
-        <DomParticleField onFps={onFps} particleCount={particleCount} />
-      )}
-    </StressTestShell>
+export function DomField() {
+  const { particleCount, reportFps } = useCompare();
+  const onFps = useCallback(
+    (fps: number) => reportFps("react-dom", fps),
+    [reportFps]
   );
-}
+  // The shared count can exceed what this renderer survives. It draws its
+  // ceiling and the results table says so, rather than hanging the tab.
+  const count = Math.min(particleCount, PARTICLE_COUNT_MAX_DOM);
 
-function DomParticleField({
-  particleCount,
-  onFps,
-}: {
-  particleCount: number;
-  onFps: (fps: number) => void;
-}) {
   const { width, height } = useViewportSize();
   const elementsRef = useRef<Array<HTMLDivElement | null>>([]);
   const readyRef = useRef<boolean[]>([]);
   const particleKeys = useMemo(
-    () =>
-      Array.from(
-        { length: particleCount },
-        (_, index) => `dom-particle-${index}`
-      ),
-    [particleCount]
+    () => Array.from({ length: count }, (_, index) => `dom-particle-${index}`),
+    [count]
   );
 
   useEffect(() => {
     const ready = readyRef.current;
-    if (ready.length < particleCount) {
-      for (let i = ready.length; i < particleCount; i += 1) {
+    if (ready.length < count) {
+      for (let i = ready.length; i < count; i += 1) {
         ready[i] = false;
       }
-    } else if (ready.length > particleCount) {
-      ready.length = particleCount;
+    } else if (ready.length > count) {
+      ready.length = count;
     }
-    elementsRef.current.length = particleCount;
-  }, [particleCount]);
+    elementsRef.current.length = count;
+  }, [count]);
 
   useParticleSimulation({
     width,
     height,
-    particleCount,
+    particleCount: count,
     onFps,
     onFrame: ({ particles, timeSeconds }) => {
       const elements = elementsRef.current;

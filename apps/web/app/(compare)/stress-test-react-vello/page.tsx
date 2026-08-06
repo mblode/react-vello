@@ -1,4 +1,4 @@
-import { StressTestReactVello } from "@/components/stress-test-react-vello";
+import { VelloField } from "@/components/compare/vello-field";
 import { pageMetadata } from "@/lib/metadata";
 import { STRESS_TEST_REACT_VELLO_PATH } from "@/lib/routes";
 
@@ -10,5 +10,5 @@ export const metadata = pageMetadata({
 });
 
 export default function StressTestReactVelloPage() {
-  return <StressTestReactVello />;
+  return <VelloField />;
 }
