@@ -68,14 +68,11 @@ root.render(
 
 - WebGPU is required; use a browser with WebGPU enabled.
 - The WASM renderer ships with the package; no extra setup required.
+- Inspired by [react-three-fiber](https://github.com/pmndrs/react-three-fiber), [react-konva](https://github.com/konvajs/react-konva), and [react-pdf](https://github.com/diegomura/react-pdf).
 
 ## License
 
 [MIT](LICENSE.md)
-
----
-
-<sub>Inspired by [react-three-fiber](https://github.com/pmndrs/react-three-fiber), [react-konva](https://github.com/konvajs/react-konva), and [react-pdf](https://github.com/diegomura/react-pdf).</sub>
 
 ---
 
