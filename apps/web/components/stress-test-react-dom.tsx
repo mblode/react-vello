@@ -19,7 +19,7 @@ export function StressTestReactDom() {
         "It still falls over long before the other two. Each particle is a real layout object the browser has to style, composite and hit-test, and none of that work goes away because you avoided a reflow.",
       ]}
       label="React DOM"
-      summary="The shared particle simulation, one absolutely positioned div per particle."
+      summary="Drawn by the DOM: one absolutely positioned div per particle."
     >
       {({ particleCount, onFps }) => (
         <DomParticleField onFps={onFps} particleCount={particleCount} />

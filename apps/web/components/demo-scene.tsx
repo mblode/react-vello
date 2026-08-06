@@ -31,11 +31,11 @@ const TRACER_RADIUS = 5;
 const HALO_RADIUS = 11;
 
 const DEMO_SUMMARY =
-  "Drag any of the four handles. The dot is the curve evaluated live, not a path animation.";
+  "Drag any of the four handles. The dot is the curve re-evaluated every frame.";
 
 const DEMO_DETAIL = [
-  "The thin lines show each control point's pull on the end it belongs to. The dot is de Casteljau's algorithm run at a moving t every frame, which is why it slows through the tight part of a bend and speeds up through the straight.",
-  "None of the rendering shows up on the React side. The scene is written as Canvas, Group, Path and Rect components with props, and a custom React reconciler turns that tree into a scene graph which Rust encodes and Vello rasterises on the GPU. Pointer events come back out the same way, so dragging a handle is an ordinary event on a shape rather than hit-testing coordinates against a canvas by hand.",
+  "The thin lines show each control point's pull on the end it belongs to. The dot is de Casteljau's algorithm run at a moving t, which is why it slows through the tight part of a bend and speeds up through the straight.",
+  "None of this shows up on the React side. The scene is Canvas, Group, Path and Rect components with props; a custom reconciler turns that tree into a scene graph, Rust encodes it, and Vello rasterises it on the GPU. Pointer events come back the same way, so dragging a handle is an ordinary event on a shape rather than hit-testing coordinates by hand.",
 ] as const;
 
 function buildCubicPath(
