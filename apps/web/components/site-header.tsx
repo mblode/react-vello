@@ -13,11 +13,16 @@ import {
   STRESS_TEST_REACT_VELLO_PATH,
 } from "@/lib/routes";
 
-/** The demo has no entry here; the wordmark is the way back to it. */
+/**
+ * The demo has no entry here; the wordmark is the way back to it. Labels drop
+ * the "React " prefix so the Vello benchmark does not read identically to the
+ * wordmark beside it, which is two links with the same text going to different
+ * places. Each page's own heading still carries the full name.
+ */
 const NAV_ITEMS: Array<{ href: string; label: string }> = [
-  { href: STRESS_TEST_REACT_VELLO_PATH, label: "React Vello" },
-  { href: STRESS_TEST_REACT_KONVA_PATH, label: "React Konva" },
-  { href: STRESS_TEST_REACT_DOM_PATH, label: "React DOM" },
+  { href: STRESS_TEST_REACT_VELLO_PATH, label: "Vello" },
+  { href: STRESS_TEST_REACT_KONVA_PATH, label: "Konva" },
+  { href: STRESS_TEST_REACT_DOM_PATH, label: "DOM" },
 ];
 
 function NavLink({
