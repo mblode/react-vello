@@ -9,9 +9,11 @@ import {
   Rect,
 } from "react-vello";
 
-import { AboutPanel } from "@/components/about-panel";
-import { VelloSurface } from "@/components/vello-surface";
-import { clamp } from "@/lib/particles";
+import { InfoPanel } from "@/components/info-panel";
+import { VelloSurface, type VelloScene } from "@/components/vello-surface";
+import { CANVAS_BG, HANDLE_COLOR, SCENE_INK } from "@/lib/scene-colors";
+import { usePrefersReducedMotion } from "@/lib/use-prefers-reduced-motion";
+import { clamp, lerp } from "@/lib/utils";
 
 interface Point {
   x: number;
@@ -22,12 +24,19 @@ type HandleId = "start" | "control1" | "control2" | "end";
 type HandleMap = Record<HandleId, Point>;
 
 const HANDLE_ORDER: HandleId[] = ["start", "control1", "control2", "end"];
-const TRACER_PERIOD_TICKS = 280;
-const TICK_WRAP = 6000;
+const TRACER_PERIOD_MS = 4500;
+/** Where the dot parks when the visitor has asked for less motion. */
+const TRACER_STATIC_T = 0.35;
+const TRACER_RADIUS = 5;
+const HALO_RADIUS = 11;
 
-function lerp(start: number, end: number, t: number): number {
-  return start + (end - start) * t;
-}
+const DEMO_SUMMARY =
+  "Drag any of the four handles. The dot is the curve evaluated live, not a path animation.";
+
+const DEMO_DETAIL = [
+  "The thin lines show each control point's pull on the end it belongs to. The dot is de Casteljau's algorithm run at a moving t every frame, which is why it slows through the tight part of a bend and speeds up through the straight.",
+  "None of the rendering shows up on the React side. The scene is written as Canvas, Group, Path and Rect components with props, and a custom React reconciler turns that tree into a scene graph which Rust encodes and Vello rasterises on the GPU. Pointer events come back out the same way, so dragging a handle is an ordinary event on a shape rather than hit-testing coordinates against a canvas by hand.",
+] as const;
 
 function buildCubicPath(
   start: Point,
@@ -55,30 +64,28 @@ function getCubicPoint(
 
 export function DemoScene() {
   const scene = useCallback(
-    ({ width, height }: { width: number; height: number }) => (
-      <BezierScene height={height} width={width} />
+    ({ width, height, context }: VelloScene) => (
+      <BezierScene context={context} height={height} width={width} />
     ),
     []
   );
 
   return (
     <>
-      <VelloSurface scene={scene} />
-      <AboutPanel
-        className="absolute bottom-4 left-4 z-10 max-h-[min(420px,calc(100dvh-8rem))] w-[min(380px,92vw)] overflow-y-auto rounded-xl border border-border/60 bg-card/90 p-4 shadow-xl backdrop-blur"
-        paragraphs={DEMO_ABOUT}
+      <VelloSurface
+        label="Interactive cubic Bézier curve with four draggable handles"
+        scene={scene}
+      />
+      <InfoPanel
+        detail={DEMO_DETAIL}
+        label="Cubic Bézier"
+        summary={DEMO_SUMMARY}
       />
     </>
   );
 }
 
-const DEMO_ABOUT = [
-  "A cubic Bézier you can pull around. Drag any of the four handles and the curve follows; the thin lines show each control point's pull on the end it belongs to. The dot running along the curve is not animating a path, it is evaluating the curve at a moving t with de Casteljau's algorithm every frame, which is why it slows through the tight part of a bend and speeds up through the straight.",
-  "What the demo is really showing is that none of the rendering is visible from the React side. The scene is written as Canvas, Group, Path and Rect components with props, and a custom React reconciler turns that tree into a scene graph which Rust encodes and Vello rasterises on the GPU. Pointer events come back out the same way, so dragging a handle is an ordinary event on a shape rather than hit-testing coordinates against a canvas by hand. It needs a browser with WebGPU: recent Chrome, Edge or Safari.",
-] as const;
-
-function BezierScene({ width, height }: { width: number; height: number }) {
-  const [tick, setTick] = useState(0);
+function BezierScene({ width, height, context }: VelloScene) {
   const [handles, setHandles] = useState<HandleMap>(() => ({
     start: { x: 0.12, y: 0.52 },
     control1: { x: 0.32, y: 0.18 },
@@ -92,18 +99,8 @@ function BezierScene({ width, height }: { width: number; height: number }) {
     pointerId: number;
     offset: Point;
   } | null>(null);
+  const prefersReducedMotion = usePrefersReducedMotion();
 
-  useEffect(() => {
-    let raf: number;
-    const loop = () => {
-      setTick((t) => (t + 1) % TICK_WRAP);
-      raf = requestAnimationFrame(loop);
-    };
-    loop();
-    return () => cancelAnimationFrame(raf);
-  }, []);
-
-  const base = Math.min(width, height);
   const safeWidth = Math.max(1, width);
   const safeHeight = Math.max(1, height);
 
@@ -119,26 +116,65 @@ function BezierScene({ width, height }: { width: number; height: number }) {
     end: toScreen(handles.end),
   };
 
-  const start = screenHandles.start;
-  const control1 = screenHandles.control1;
-  const control2 = screenHandles.control2;
-  const end = screenHandles.end;
+  const { start, control1, control2, end } = screenHandles;
+
+  // The frame loop reads the live handle positions without re-subscribing, so
+  // dragging never restarts the animation.
+  const geometryRef = useRef(screenHandles);
+  geometryRef.current = screenHandles;
+
+  // Owned by the frame loop and mutated in place. The reconciler stores the
+  // array it was handed rather than copying it, so passing the same identity
+  // back through JSX means a re-render never clobbers what the loop just wrote,
+  // and the loop never has to reach for a node ref.
+  const tracerOrigin = useRef<[number, number]>([0, 0]).current;
+  const haloOrigin = useRef<[number, number]>([0, 0]).current;
+
+  useEffect(() => {
+    const place = (t: number) => {
+      const geometry = geometryRef.current;
+      const point = getCubicPoint(
+        t,
+        geometry.start,
+        geometry.control1,
+        geometry.control2,
+        geometry.end
+      );
+      tracerOrigin[0] = point.x - TRACER_RADIUS;
+      tracerOrigin[1] = point.y - TRACER_RADIUS;
+      haloOrigin[0] = point.x - HALO_RADIUS;
+      haloOrigin[1] = point.y - HALO_RADIUS;
+      context.requestFrame();
+    };
+
+    if (prefersReducedMotion) {
+      place(TRACER_STATIC_T);
+      return;
+    }
+
+    let raf = 0;
+    const startedAt = performance.now();
+    const loop = (time: number) => {
+      place(((time - startedAt) % TRACER_PERIOD_MS) / TRACER_PERIOD_MS);
+      raf = requestAnimationFrame(loop);
+    };
+    raf = requestAnimationFrame(loop);
+    return () => cancelAnimationFrame(raf);
+  }, [context, prefersReducedMotion, tracerOrigin, haloOrigin]);
 
   const curvePath = buildCubicPath(start, control1, control2, end);
   const handleLineA = `M ${start.x} ${start.y} L ${control1.x} ${control1.y}`;
   const handleLineB = `M ${end.x} ${end.y} L ${control2.x} ${control2.y}`;
-
-  const progress = (tick % TRACER_PERIOD_TICKS) / TRACER_PERIOD_TICKS;
-  const tracer = getCubicPoint(progress, start, control1, control2, end);
-  const tracerPulse = 0.6 + 0.4 * Math.sin(tick * 0.04);
-  const tracerRadius = 4 + tracerPulse * 3;
-  const haloRadius = tracerRadius + 6;
-  const baseStroke = clamp(Math.round(base * 0.012), 3, 8);
+  const baseStroke = clamp(Math.round(Math.min(width, height) * 0.012), 3, 8);
 
   const updateHandle = (id: HandleId, position: Point) => {
-    const nextX = clamp(position.x / safeWidth, 0, 1);
-    const nextY = clamp(position.y / safeHeight, 0, 1);
-    setHandles((prev) => ({ ...prev, [id]: { x: nextX, y: nextY } }));
+    setHandles((prev) => ({
+      ...prev,
+      [id]: {
+        x: clamp(position.x / safeWidth, 0, 1),
+        y: clamp(position.y / safeHeight, 0, 1),
+      },
+    }));
   };
 
   const handlePointerDown = (id: HandleId) => (event: CanvasPointerEvent) => {
@@ -177,26 +213,32 @@ function BezierScene({ width, height }: { width: number; height: number }) {
     event.releasePointerCapture(event.pointerId);
   };
 
+  const guideStroke = {
+    width: 1.4,
+    paint: { kind: "solid", color: SCENE_INK.guide },
+    cap: "round",
+    dash: [5, 6],
+  } as const;
+
   const handleNodes = HANDLE_ORDER.map((id) => {
     const handle = screenHandles[id];
     const isAnchor = id === "start" || id === "end";
     const isActive = activeHandle === id;
     const isHovered = hoveredHandle === id;
     const baseRadius = isAnchor ? 9 : 7;
+
     let ringBoost = 3;
-    if (isActive) {
-      ringBoost = 7;
-    } else if (isHovered) {
-      ringBoost = 5;
-    }
-    const ringRadius = baseRadius + ringBoost;
-    const color = isAnchor ? "#38bdf8" : "#a78bfa";
     let ringOpacity = 0.16;
     if (isActive) {
+      ringBoost = 7;
       ringOpacity = 0.38;
     } else if (isHovered) {
+      ringBoost = 5;
       ringOpacity = 0.25;
     }
+
+    const ringRadius = baseRadius + ringBoost;
+    const color = isAnchor ? HANDLE_COLOR.anchor : HANDLE_COLOR.control;
 
     return (
       <Group key={id}>
@@ -226,33 +268,15 @@ function BezierScene({ width, height }: { width: number; height: number }) {
   });
 
   return (
-    <Canvas backgroundColor="#0b1120" height={height} width={width}>
-      <Path
-        d={handleLineA}
-        opacity={0.55}
-        stroke={{
-          width: 1.4,
-          paint: { kind: "solid", color: "#334155" },
-          cap: "round",
-          dash: [5, 6],
-        }}
-      />
-      <Path
-        d={handleLineB}
-        opacity={0.55}
-        stroke={{
-          width: 1.4,
-          paint: { kind: "solid", color: "#334155" },
-          cap: "round",
-          dash: [5, 6],
-        }}
-      />
+    <Canvas backgroundColor={CANVAS_BG} height={height} width={width}>
+      <Path d={handleLineA} opacity={0.55} stroke={guideStroke} />
+      <Path d={handleLineB} opacity={0.55} stroke={guideStroke} />
       <Path
         d={curvePath}
         opacity={0.85}
         stroke={{
           width: baseStroke + 5,
-          paint: { kind: "solid", color: "#1e293b" },
+          paint: { kind: "solid", color: SCENE_INK.curveShadow },
           cap: "round",
           join: "round",
         }}
@@ -262,24 +286,26 @@ function BezierScene({ width, height }: { width: number; height: number }) {
         opacity={0.9}
         stroke={{
           width: baseStroke,
-          paint: { kind: "solid", color: "#38bdf8" },
+          paint: { kind: "solid", color: HANDLE_COLOR.anchor },
           cap: "round",
           join: "round",
         }}
       />
       <Rect
-        fill={{ kind: "solid", color: "#38bdf8" }}
+        fill={{ kind: "solid", color: HANDLE_COLOR.anchor }}
+        listening={false}
         opacity={0.16}
-        origin={[tracer.x - haloRadius, tracer.y - haloRadius]}
-        radius={haloRadius}
-        size={[haloRadius * 2, haloRadius * 2]}
+        origin={haloOrigin}
+        radius={HALO_RADIUS}
+        size={[HALO_RADIUS * 2, HALO_RADIUS * 2]}
       />
       <Rect
-        fill={{ kind: "solid", color: "#e2e8f0" }}
+        fill={{ kind: "solid", color: SCENE_INK.tracer }}
+        listening={false}
         opacity={0.92}
-        origin={[tracer.x - tracerRadius, tracer.y - tracerRadius]}
-        radius={tracerRadius}
-        size={[tracerRadius * 2, tracerRadius * 2]}
+        origin={tracerOrigin}
+        radius={TRACER_RADIUS}
+        size={[TRACER_RADIUS * 2, TRACER_RADIUS * 2]}
       />
       {handleNodes}
     </Canvas>
