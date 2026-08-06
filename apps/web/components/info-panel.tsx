@@ -4,9 +4,13 @@ import type { ReactNode } from "react";
 import { cn } from "@/lib/utils";
 
 /**
- * The overlay every route hangs its prose and controls off. Each page is a
- * full-screen canvas, so without this the served HTML is a nav, an `h1` and a
- * `<canvas>` — nothing to read without WebGPU, and nothing to index.
+ * The overlay the benchmark routes hang their prose and controls off. Each is a
+ * pinned full-screen canvas, so without this the served HTML is a nav, an `h1`
+ * and a `<canvas>` — nothing to read without WebGPU, and nothing to index. The
+ * demo has real prose below the fold instead and does not use this.
+ *
+ * It owns the card, not where the card sits; positioning comes in through
+ * `className`.
  *
  * The long-form copy sits in a closed `<details>`: it still ships in the server
  * HTML and stays crawlable, it just isn't shouting over the thing it describes.
@@ -27,8 +31,6 @@ export function InfoPanel({
   return (
     <section
       className={cn(
-        // Sits above the credit badge on a phone, beside it from `sm` up.
-        "absolute bottom-16 left-4 z-10 w-[min(22rem,calc(100vw-2rem))] sm:bottom-4",
         "rounded-xl border border-border bg-card/85 p-4 shadow-soft backdrop-blur-md",
         className
       )}

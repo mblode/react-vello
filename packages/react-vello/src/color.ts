@@ -67,7 +67,32 @@ function normalizeRgbaColor(color: RgbaColor): NormalizedRgba {
   };
 }
 
+/**
+ * Hex strings come from a palette, not from arithmetic: a scene of 30,000 rects
+ * is usually five distinct colours repeated. Parsing is three `slice` calls and
+ * three `parseInt`s plus an object, so re-parsing per node per frame was around
+ * 120,000 allocations a frame for five distinct answers.
+ *
+ * Results are frozen because they are shared by every caller now.
+ */
+const hexCache = new Map<string, NormalizedRgba | null>();
+/** A pathological scene could otherwise grow this without bound. */
+const HEX_CACHE_LIMIT = 1024;
+
 function parseHex(input: string): NormalizedRgba | null {
+  const cached = hexCache.get(input);
+  if (cached !== undefined) {
+    return cached;
+  }
+  const parsed = parseHexUncached(input);
+  if (hexCache.size >= HEX_CACHE_LIMIT) {
+    hexCache.clear();
+  }
+  hexCache.set(input, parsed && Object.freeze(parsed));
+  return parsed;
+}
+
+function parseHexUncached(input: string): NormalizedRgba | null {
   if (!input.startsWith("#")) {
     return null;
   }

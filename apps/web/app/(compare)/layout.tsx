@@ -5,6 +5,7 @@ import type { ReactNode } from "react";
 
 import { CompareProvider } from "@/components/compare/compare-context";
 import { ComparePanel } from "@/components/compare/compare-panel";
+import { SiteFooter } from "@/components/site-footer";
 import { getRendererByPath, RENDERERS } from "@/lib/renderers";
 
 /**
@@ -18,8 +19,13 @@ export default function CompareLayout({ children }: { children: ReactNode }) {
 
   return (
     <CompareProvider>
-      {children}
-      <ComparePanel active={active} />
+      {/* Pinned rather than scrolling: a benchmark you can scroll away from
+          measures the scroll as much as the renderer. */}
+      <div className="fixed inset-0 overflow-hidden bg-background">
+        {children}
+        <ComparePanel active={active} />
+        <SiteFooter floating />
+      </div>
     </CompareProvider>
   );
 }

@@ -28,14 +28,20 @@ export * from "./types";
 const supportsWebGPU = typeof navigator !== "undefined" && "gpu" in navigator;
 
 interface WasmDriverOptions {
-  onReady?: () => void;
+  onReady?: (renderer: WasmRenderer) => void;
   onError?: (error: unknown) => void;
 }
 
+/**
+ * Owns the WebGPU renderer once it resolves.
+ *
+ * There is no queue of pending frames: until the renderer exists the encoder is
+ * writing into an ordinary JS buffer that the driver cannot read anyway, so the
+ * container simply redraws once the buffer has been repointed at WASM memory.
+ */
 class WasmDriver {
   private renderer: WasmRenderer | null = null;
-  private pending: Uint8Array | null = null;
-  private readonly onReady?: () => void;
+  private readonly onReady?: (renderer: WasmRenderer) => void;
   private readonly onError?: (error: unknown) => void;
 
   constructor(canvas: HTMLCanvasElement, options: WasmDriverOptions = {}) {
@@ -49,12 +55,7 @@ class WasmDriver {
           return;
         }
         this.renderer = renderer;
-        this.onReady?.();
-        if (this.pending) {
-          this.renderer.apply(this.pending);
-          this.renderer.render();
-          this.pending = null;
-        }
+        this.onReady?.(renderer);
       })
       .catch((error) => {
         console.error("[rvello] wasm renderer unavailable", error);
@@ -64,19 +65,19 @@ class WasmDriver {
 
   private handleFailure(error: unknown) {
     this.renderer = null;
-    this.pending = null;
     this.onError?.(error);
   }
 
-  enqueue(ops: Uint8Array) {
+  /**
+   * The frame is already sitting in the renderer's buffer; only its length has
+   * to cross the boundary.
+   */
+  submit(ops: Uint8Array) {
     if (!this.renderer) {
-      this.pending = ops;
       return;
     }
-
     try {
-      this.renderer.apply(ops);
-      this.renderer.render();
+      this.renderer.submit(ops.byteLength);
     } catch (error) {
       console.error("[rvello] wasm render failed", error);
       this.handleFailure(error);
@@ -456,8 +457,19 @@ const reconciler = Reconciler(hostConfig);
 
 export interface RendererOptions {
   onReady?: (context: CanvasContext) => void;
+  /**
+   * The encoded frame, immediately after it is built.
+   *
+   * The buffer is reused between frames, so the view is only valid for the
+   * duration of the call. Copy it if you need to keep it.
+   */
   onFrame?: (ops: Uint8Array) => void;
   onError?: (error: unknown) => void;
+  /**
+   * Collect per-stage frame timings, readable through `context.getStats()`.
+   * Off by default: the collector is not even allocated unless you ask.
+   */
+  debug?: boolean;
 }
 
 export interface VelloRoot {
@@ -475,9 +487,10 @@ export function createVelloRoot(
   const container = createCanvasContainer(canvas, {
     onFrame(ops) {
       options.onFrame?.(ops);
-      wasmDriver?.enqueue(ops);
+      wasmDriver?.submit(ops);
     },
     softwareRenderer: !supportsWebGPU,
+    debug: options.debug,
   });
 
   const reconRoot = reconciler.createContainer(
@@ -506,6 +519,7 @@ export function createVelloRoot(
       number,
     ],
     requestFrame: () => scheduleRender(container),
+    getStats: () => container.stats?.read() ?? null,
     readPixels() {
       return Promise.reject(
         new Error("readPixels is not implemented in the preview renderer")
@@ -518,12 +532,24 @@ export function createVelloRoot(
 
   if (supportsWebGPU) {
     wasmDriver = new WasmDriver(canvas, {
-      onReady: () => {
+      onReady: (renderer) => {
+        // From here the encoder writes the frame directly into the renderer's
+        // buffer inside WASM memory. Redraw once so the first frame lands
+        // somewhere the renderer can actually read.
+        container.setFrameBuffer((required) => renderer.reserve(required));
+        scheduleRender(container);
         options.onReady?.(context);
       },
       onError: (error) => {
         wasmDriver = null;
+        container.setFrameBuffer(null);
         container.enableSoftwareRenderer();
+        // Nothing consumes the encoded frame once the GPU path is gone, and
+        // building one anyway meant serialising the whole scene into a buffer
+        // that got dropped, on top of the Canvas 2D draw that replaced it.
+        if (!options.onFrame) {
+          container.onFrame = undefined;
+        }
         backend = "canvas";
         scheduleRender(container);
         options.onError?.(error);

@@ -1,5 +1,6 @@
+import { BinaryWriter, type GrowBuffer, growDetached } from "./binaryWriter";
 import { colorToCss, paintToRgba, rgbaToCss } from "./color";
-import { encodeFrame } from "./encoder";
+import { encodeFrame, getLastFrameOpCount } from "./encoder";
 import { resolveCornerRadius } from "./geometry";
 import {
   IDENTITY_MATRIX,
@@ -16,6 +17,7 @@ import {
   resolveRectSize,
   resolveTextOrigin,
 } from "./nodeProps";
+import { FrameStatsCollector } from "./stats";
 import type {
   CanvasDragEvent,
   CanvasPointerEvent,
@@ -138,17 +140,40 @@ export interface CanvasContainer {
   frameHandle: number | null;
   presentationSize: [number, number];
   dpr: number;
+  /**
+   * The frame buffer, reused across frames. Once a GPU renderer attaches, this
+   * writes straight into WASM linear memory — see {@link setFrameBuffer}.
+   */
+  writer: BinaryWriter;
+  /**
+   * Repoints the writer at renderer-owned storage. Passing `null` returns it to
+   * an ordinary JS buffer, which is where it starts and where it stays if the
+   * GPU path never comes up.
+   */
+  setFrameBuffer(grow: GrowBuffer | null): void;
   onFrame?: (ops: Uint8Array) => void;
   softwareRendererActive: boolean;
   enableSoftwareRenderer(): void;
   hitRegions: HitRegion[];
   hitRegionMap: Map<SceneNode, HitRegion>;
+  /**
+   * Set after every frame, cleared the next time a pointer event needs to know
+   * where things are. Hit regions used to be rebuilt on every frame — two full
+   * traversals and four allocations per rect — even though an animation frame
+   * changes nothing a pointer cares about until the pointer actually moves.
+   */
+  hitRegionsDirty: boolean;
   pointerCaptures: Map<number, SceneNode>;
   hoverStates: Map<number, HoverState>;
   dragSessions: Map<number, DragSession>;
   resizeObserver: ResizeObserver | null;
   resizeTarget: Element | null;
   appliedStyleKeys: Set<string>;
+  /** Identity of the `Canvas` props last written to the DOM element. */
+  appliedCanvasProps: CanvasProps | null;
+  /** CSS pixel size last written to `canvas.style`. */
+  appliedCssSize: [number, number];
+  stats: FrameStatsCollector | null;
 }
 
 interface RenderState {
@@ -175,6 +200,7 @@ const WHEEL_POINTER_ID = -1;
 interface ContainerOptions {
   onFrame?: (ops: Uint8Array) => void;
   softwareRenderer?: boolean;
+  debug?: boolean;
 }
 
 export function createCanvasContainer(
@@ -200,16 +226,24 @@ export function createCanvasContainer(
     frameHandle: null,
     presentationSize: [canvas.width, canvas.height],
     dpr: window.devicePixelRatio ?? 1,
+    writer: new BinaryWriter(),
+    setFrameBuffer: (grow) => {
+      container.writer.setGrow(grow ?? growDetached());
+    },
     onFrame: options.onFrame,
     softwareRendererActive,
     hitRegions: [],
     hitRegionMap: new Map(),
+    hitRegionsDirty: true,
     pointerCaptures: new Map(),
     hoverStates: new Map(),
     dragSessions: new Map(),
     resizeObserver: null,
     resizeTarget: null,
     appliedStyleKeys: new Set(),
+    appliedCanvasProps: null,
+    appliedCssSize: [0, 0],
+    stats: options.debug ? new FrameStatsCollector() : null,
     enableSoftwareRenderer: () => {
       if (container.softwareRendererActive) {
         return;
@@ -482,7 +516,16 @@ function ensureResizeObserver(
     return;
   }
   container.resizeObserver?.disconnect();
-  container.resizeObserver = new ResizeObserver(() => {
+  container.resizeObserver = new ResizeObserver(([entry]) => {
+    // ResizeObserver fires on observe and on any layout pass that touches the
+    // box, including ones that leave the size alone. Redrawing for those is a
+    // whole wasted frame — encode, upload and rasterise — for an identical
+    // picture.
+    const box = entry?.contentRect;
+    const size = container.appliedCssSize;
+    if (box && box.width === size[0] && box.height === size[1]) {
+      return;
+    }
     scheduleRender(container);
   });
   container.resizeObserver.observe(target);
@@ -568,6 +611,7 @@ function renderContainer(container: CanvasContainer): void {
     }
     container.hitRegions = [];
     container.hitRegionMap.clear();
+    container.hitRegionsDirty = false;
     return;
   }
 
@@ -579,15 +623,28 @@ function renderContainer(container: CanvasContainer): void {
   const deviceWidth = Math.max(1, Math.round(width * dpr));
   const deviceHeight = Math.max(1, Math.round(height * dpr));
 
-  applyCanvasAttributes(container, props);
+  // Attributes and inline styles only change on a React commit, which always
+  // hands over a new props object. On an animation frame the object is the one
+  // we already wrote, so there is nothing to do — and doing it anyway meant
+  // rewriting `className`, four attributes and a fresh `Set` sixty times a
+  // second for no change.
+  if (container.appliedCanvasProps !== props) {
+    applyCanvasAttributes(container, props);
+    container.appliedCanvasProps = props;
+  }
 
   if (canvas.width !== deviceWidth || canvas.height !== deviceHeight) {
     canvas.width = deviceWidth;
     canvas.height = deviceHeight;
   }
 
-  canvas.style.width = `${width}px`;
-  canvas.style.height = `${height}px`;
+  const cssSize = container.appliedCssSize;
+  if (cssSize[0] !== width || cssSize[1] !== height) {
+    canvas.style.width = `${width}px`;
+    canvas.style.height = `${height}px`;
+    cssSize[0] = width;
+    cssSize[1] = height;
+  }
 
   if (drawSoftware && ctx) {
     ctx.scale(dpr, dpr);
@@ -614,13 +671,44 @@ function renderContainer(container: CanvasContainer): void {
   container.presentationSize[1] = height;
   container.dpr = dpr;
 
-  updateHitRegions(container, canvasNode);
+  // Deferred rather than done here: nothing reads hit regions until a pointer
+  // event arrives, and most frames are animation, not interaction.
+  container.hitRegionsDirty = true;
 
   if (container.onFrame) {
+    const stats = container.stats;
+    const encodeStart = stats ? performance.now() : 0;
     const encoded = encodeFrame(container);
+    const submitStart = stats ? performance.now() : 0;
     if (encoded) {
       container.onFrame(encoded);
     }
+    if (stats) {
+      stats.record(
+        submitStart - encodeStart,
+        performance.now() - submitStart,
+        encoded?.byteLength ?? 0,
+        getLastFrameOpCount()
+      );
+    }
+  }
+}
+
+/**
+ * Brings hit regions up to date if a frame has been drawn since they were last
+ * built. Called from the pointer entry points rather than from the render loop.
+ */
+function ensureHitRegions(container: CanvasContainer): void {
+  if (!container.hitRegionsDirty) {
+    return;
+  }
+  container.hitRegionsDirty = false;
+  const root = container.root;
+  if (root && root.type === "Canvas") {
+    updateHitRegions(container, root as SceneNode<"Canvas">);
+  } else {
+    container.hitRegions = [];
+    container.hitRegionMap.clear();
   }
 }
 
@@ -819,6 +907,8 @@ function handlePointerEvent(
     return;
   }
 
+  ensureHitRegions(container);
+
   const pointerId = "pointerId" in nativeEvent ? nativeEvent.pointerId : 0;
   const position = getPointerPosition(container.canvas, nativeEvent);
   const activeDrag = container.dragSessions.get(pointerId);
@@ -960,6 +1050,7 @@ function handleWheelEvent(
   if (!container.root) {
     return;
   }
+  ensureHitRegions(container);
   const position = getPointerPosition(container.canvas, nativeEvent);
   const hit = findHitRegionAtPoint(container.hitRegions, position);
   if (!hit) {
