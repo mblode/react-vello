@@ -29,7 +29,7 @@ Try the live demo.
 
 ## Install
 
-```shell
+```bash
 npm install react-vello react react-dom
 ```
 
@@ -72,7 +72,7 @@ root.render(
 
 ## License
 
-[MIT](LICENSE.md)
+MIT
 
 ---
 
