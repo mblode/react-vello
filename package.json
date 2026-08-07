@@ -15,7 +15,7 @@
     "check-types": "turbo run check-types",
     "changeset": "changeset",
     "changeset:version": "changeset version",
-    "release": "changeset publish",
+    "release": "pnpm --filter ./packages/react-vello build && changeset publish",
     "clean": "turbo clean && rm -rf node_modules pnpm-lock.yaml",
     "wasm:build": "wasm-pack build crates/rvello --out-dir pkg --target web --release",
     "wasm:watch": "wasm-pack build crates/rvello --out-dir pkg --target web --dev --watch"

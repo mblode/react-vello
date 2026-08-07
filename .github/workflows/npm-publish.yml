@@ -32,7 +32,9 @@ jobs:
       - name: Create release PR or publish
         uses: changesets/action@v1
         with:
-          publish: pnpm --filter ./packages/react-vello build && pnpm run release
+          # Exec'd without a shell, so this has to be one command: anything
+          # after an `&&` here arrives as literal argv, not as a shell operator.
+          publish: pnpm run release
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           NPM_CONFIG_PROVENANCE: "true"
