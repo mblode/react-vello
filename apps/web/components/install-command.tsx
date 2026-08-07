@@ -8,8 +8,8 @@ const COMMAND = "npm i react-vello";
  */
 export function InstallCommand() {
   return (
-    <div className="mt-3 flex items-center gap-2 rounded-lg border border-border bg-background/60 py-1.5 pr-1.5 pl-3">
-      <code className="flex-1 truncate font-mono text-xs">{COMMAND}</code>
+    <div className="mb-4 flex items-center gap-2 rounded-lg border border-border bg-background/60 py-1.5 pr-1.5 pl-3">
+      <code className="flex-1 truncate font-mono text-sm">{COMMAND}</code>
       <CopyButton label="install command" value={COMMAND} />
     </div>
   );
