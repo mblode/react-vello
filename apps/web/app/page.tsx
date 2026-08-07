@@ -53,98 +53,81 @@ export default function DemoPage() {
         <Reveal>
           <p className="mb-6 text-pretty text-[1.4375rem]/[1.35] tracking-[-0.011em]">
             A React tree, rasterised on the GPU. The curve above is four
-            components with props — no canvas API, no draw calls, no hit-testing
-            by hand.
+            components with props: no canvas API, no draw calls, no hit-testing.
           </p>
         </Reveal>
 
         <Reveal as="section" delay={0.08}>
-          <h2 className={HEADING}>What you are looking at</h2>
+          <h2 className={HEADING}>The curve above</h2>
           <p className="mb-4 text-pretty">
-            A cubic Bézier curve with four draggable handles. Drag any of them.
-            The thin lines show each control point&rsquo;s pull on the end it
-            belongs to, and the dot is the curve re-evaluated every frame.
-          </p>
-          <p className="mb-4 text-pretty">
-            That dot is de Casteljau&rsquo;s algorithm run at a moving{" "}
-            <em>t</em>, which is why it slows through the tight part of a bend
-            and speeds up through the straight.
+            A cubic Bézier with four draggable handles. Drag one. The thin lines
+            show each control point&rsquo;s pull. The dot is de
+            Casteljau&rsquo;s algorithm at a moving <em>t</em>, so it slows
+            through tight bends.
           </p>
         </Reveal>
 
         <Reveal as="section">
-          <h2 className={HEADING}>The whole API</h2>
+          <h2 className={HEADING}>Install</h2>
+          <InstallCommand />
           <p className="mb-4 text-pretty">
-            Four components and a root. This is a complete program that draws a
-            blue box and some text:
+            The WASM renderer ships inside the package. No build step, no asset
+            to host.
+          </p>
+        </Reveal>
+
+        <Reveal as="section">
+          <h2 className={HEADING}>Quickstart</h2>
+          <p className="mb-4 text-pretty">
+            Four components and a root. A complete program that draws a blue box
+            and some text:
           </p>
           <CodeBlock code={QUICKSTART} filename="app.tsx" />
           <p className="mb-4 text-pretty">
             <code className={CODE}>createVelloRoot</code> is{" "}
             <code className={CODE}>createRoot</code> for a canvas. Everything
-            after it is ordinary React: state, effects, keys, refs, the same
-            reconciler contract you already know.
+            after it is ordinary React: state, effects, keys, refs.
           </p>
-          <InstallCommand />
         </Reveal>
 
         <Reveal as="section">
-          <h2 className={HEADING}>Why Vello is the breakthrough</h2>
+          <h2 className={HEADING}>How it works</h2>
           <p className="mb-4 text-pretty">
-            Every 2D canvas library before this one worked shape by shape. You
-            handed the GPU a rectangle, then another one, and the cost of the
-            picture was the number of things in it.
-          </p>
-          <p className="mb-4 text-pretty">
-            Vello does not work that way. It encodes the whole scene — every
-            path, every fill, every clip — into buffers, then rasterises it with
-            compute shaders that never see your shapes as separate draws. The
-            fixed-function graphics pipeline is barely involved. Shape count
-            stops being the thing that costs, which is why the{" "}
+            Every 2D canvas library before this one worked shape by shape: one
+            rectangle, then another, and the picture cost what it held. Vello
+            encodes the whole scene into buffers and rasterises it with compute
+            shaders that never see separate draws. Shape count stops being the
+            thing that costs, which is why the{" "}
             <Link className={LINK} href={STRESS_TEST_REACT_VELLO_PATH}>
               comparison
             </Link>{" "}
-            can put thirty thousand of them on screen at once.
-          </p>
-        </Reveal>
-
-        <Reveal as="section">
-          <h2 className={HEADING}>React is the scene graph</h2>
-          <p className="mb-4 text-pretty">
-            None of that shows up on the React side. The scene is Canvas, Group,
-            Path and Rect components with props; a custom reconciler turns that
-            tree into a scene graph, Rust encodes it into a binary frame, and
-            Vello rasterises it.
+            runs thirty thousand of them at once.
           </p>
           <p className="mb-4 text-pretty">
-            Pointer events come back the same way. Dragging a handle above is an{" "}
+            Your side stays Canvas, Group, Path and Rect with props. A
+            reconciler turns the tree into a scene graph, Rust encodes a binary
+            frame, Vello rasterises it. Dragging a handle above is an{" "}
             <code className={CODE}>onPointerDown</code> on a shape, not a
-            coordinate you hit-tested yourself.
+            coordinate you hit-tested.
           </p>
         </Reveal>
 
         <Reveal as="section">
-          <h2 className={HEADING}>What it costs</h2>
+          <h2 className={HEADING}>Requirements</h2>
           <p className="mb-4 text-pretty">
-            WebGPU, and a browser that has it. Where it is missing the renderer
-            falls back to Canvas 2D and says so on screen, so the page still
-            draws — just not on the GPU.
-          </p>
-          <p className="mb-4 text-pretty">
-            The WASM binary ships inside the package. No build step, no separate
-            asset to host, no wasm-pack in your toolchain.
+            WebGPU. Without it the renderer falls back to Canvas 2D and says so
+            on screen, so the page still draws.
           </p>
         </Reveal>
 
         <Reveal as="section">
-          <h2 className={HEADING}>How fast</h2>
+          <h2 className={HEADING}>Benchmarks</h2>
           <p className="mb-4 text-pretty">
-            Thirty thousand animated shapes, the same simulation, three
-            renderers:{" "}
+            Thirty thousand animated shapes, three renderers, your machine:{" "}
             <Link className={LINK} href={STRESS_TEST_REACT_VELLO_PATH}>
               compare react-vello, react-konva and react-dom
-            </Link>{" "}
-            on your own machine.
+            </Link>
+            .
           </p>
         </Reveal>
       </main>
