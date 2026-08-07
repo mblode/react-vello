@@ -41,8 +41,4 @@ strip = "debuginfo"
 [package.metadata.wasm-pack.profile.release]
 # wasm-pack defaults to a bare `-O`. Bulk memory matters directly here: it turns
 # the frame buffer copy into a single `memory.copy` instruction.
-wasm-opt = [
-  "-O4",
-  "--enable-bulk-memory",
-  "--enable-nontrapping-float-to-int",
-]
+wasm-opt = ["-O4", "--enable-bulk-memory", "--enable-nontrapping-float-to-int"]
