@@ -7,5 +7,5 @@
   "access": "public",
   "baseBranch": "main",
   "updateInternalDependencies": "patch",
-  "ignore": ["@react-vello/examples"]
+  "ignore": ["@react-vello/web"]
 }
