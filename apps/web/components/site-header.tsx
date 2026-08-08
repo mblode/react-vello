@@ -7,17 +7,19 @@ import type { ReactNode } from "react";
 
 import { Button } from "@/components/ui/button";
 import { RENDERERS } from "@/lib/renderers";
-import { DEMO_PATH, STRESS_TEST_REACT_VELLO_PATH } from "@/lib/routes";
+import {
+  DEMO_PATH,
+  DOCS_PATH,
+  STRESS_TEST_REACT_VELLO_PATH,
+} from "@/lib/routes";
 
 /**
  * The demo has no entry here; the wordmark is the way back to it. Compare is
- * in-app; Docs and GitHub are external.
+ * in-app; Docs stays on the zone vanity path; GitHub is external.
  */
 const NAV_ITEMS: Array<{ href: string; label: string }> = [
   { href: STRESS_TEST_REACT_VELLO_PATH, label: "Compare" },
 ];
-
-const DOCS_URL = "https://react-vello.blode.md/docs";
 
 function NavLink({
   href,
@@ -67,9 +69,7 @@ export function SiteHeader() {
           </NavLink>
         ))}
         <Button asChild className="rounded-full" size="sm" variant="ghost">
-          <a href={DOCS_URL} rel="noreferrer noopener" target="_blank">
-            Docs
-          </a>
+          <Link href={DOCS_PATH}>Docs</Link>
         </Button>
         <Button asChild className="rounded-full" size="sm">
           <a
