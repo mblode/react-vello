@@ -1,0 +1,33 @@
+{
+  "$schema": "https://blode.md/docs.json",
+  "name": "React Vello",
+  "slug": "react-vello",
+  "seo": {
+    "siteUrl": "https://blode.co/react-vello/docs"
+  },
+  "description": "A React renderer powered by Vello — Rust GPU rendering via WASM and WebGPU.",
+  "navbar": {
+    "links": [
+      {
+        "label": "Website",
+        "href": "https://blode.co/react-vello"
+      },
+      {
+        "label": "GitHub",
+        "href": "https://github.com/mblode/react-vello"
+      }
+    ]
+  },
+  "navigation": {
+    "groups": [
+      {
+        "group": "Getting Started",
+        "pages": ["index", "installation", "quickstart", "webgpu"]
+      },
+      {
+        "group": "API",
+        "pages": ["api/overview"]
+      }
+    ]
+  }
+}

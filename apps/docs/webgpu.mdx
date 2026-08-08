@@ -1,0 +1,33 @@
+---
+title: WebGPU
+description: Browser requirements, the WASM renderer, and the Canvas 2D fallback.
+---
+
+React Vello prefers WebGPU. The WASM Vello renderer is bundled with the package.
+
+## Requirements
+
+- Use a browser with WebGPU enabled (current Chromium-based browsers are the most reliable path).
+- Serve your page over a secure context (`https` or `localhost`).
+
+If `navigator.gpu` is missing, the root still mounts. Rendering falls back to a Canvas 2D software path so the scene stays visible while you develop without GPU support.
+
+## How the root chooses a backend
+
+`createVelloRoot` checks for WebGPU at creation time:
+
+1. **WebGPU available** — load WASM, create the GPU renderer, and call `onReady` when the driver is ready.
+2. **WebGPU init fails** — disable the GPU driver, switch `backend` to `"canvas"`, and call `onError` then `onReady`.
+3. **No WebGPU** — skip WASM init and call `onReady` on a microtask with `backend: "canvas"`.
+
+Inspect the active path with `root.getContext().backend` (`"webgpu"` | `"canvas"`).
+
+## No extra WASM setup
+
+You do not need to configure wasm-pack, copy assets by hand, or register a separate loader for the published package. The renderer ships inside `react-vello` and loads through the package's WASM bridge.
+
+## Tips
+
+- Prefer Chromium for demos and stress tests that exercise the GPU path.
+- Pass `onError` to `createVelloRoot` if you want to surface GPU init failures in your UI.
+- Pass `debug: true` when you need per-stage frame timings via `getContext().getStats()`.

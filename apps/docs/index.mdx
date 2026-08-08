@@ -1,0 +1,24 @@
+---
+title: Introduction
+description: A React renderer powered by Vello — Rust GPU rendering via WASM and WebGPU.
+---
+
+Draw shapes and text declaratively in React while Rust handles the rendering. React Vello is a custom React reconciler backed by [Vello](https://github.com/linebender/vello), compiled to WASM and drawn with WebGPU.
+
+## Why React Vello
+
+- **Declarative scene graph** — compose `Canvas`, `Rect`, `Text`, and other host components like any React tree
+- **GPU-first** — Vello renders through WebGPU when available
+- **WASM included** — the renderer ships with the package; no separate native toolchain
+- **Familiar ergonomics** — inspired by [react-three-fiber](https://github.com/pmndrs/react-three-fiber), [react-konva](https://github.com/konvajs/react-konva), and [react-pdf](https://github.com/diegomura/react-pdf)
+
+## Demo
+
+Try the live demo at [blode.co/react-vello](https://blode.co/react-vello).
+
+## Next steps
+
+1. [Install](/docs/installation) the package
+2. Follow the [quickstart](/docs/quickstart)
+3. Read [WebGPU notes](/docs/webgpu) for browser requirements
+4. Browse the [API overview](/docs/api/overview)
