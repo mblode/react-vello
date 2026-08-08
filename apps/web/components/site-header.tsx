@@ -10,14 +10,14 @@ import { RENDERERS } from "@/lib/renderers";
 import { DEMO_PATH, STRESS_TEST_REACT_VELLO_PATH } from "@/lib/routes";
 
 /**
- * The demo has no entry here; the wordmark is the way back to it. The three
- * renderers used to sit in this bar, but picking one is a parameter of the
- * comparison rather than a destination, so that choice moved into the compare
- * surface itself and the bar carries the two places you can actually go.
+ * The demo has no entry here; the wordmark is the way back to it. Compare is
+ * in-app; Docs and GitHub are external.
  */
 const NAV_ITEMS: Array<{ href: string; label: string }> = [
   { href: STRESS_TEST_REACT_VELLO_PATH, label: "Compare" },
 ];
+
+const DOCS_URL = "https://react-vello.blode.md/docs";
 
 function NavLink({
   href,
@@ -66,6 +66,11 @@ export function SiteHeader() {
             {item.label}
           </NavLink>
         ))}
+        <Button asChild className="rounded-full" size="sm" variant="ghost">
+          <a href={DOCS_URL} rel="noreferrer noopener" target="_blank">
+            Docs
+          </a>
+        </Button>
         <Button asChild className="rounded-full" size="sm">
           <a
             href="https://github.com/mblode/react-vello"

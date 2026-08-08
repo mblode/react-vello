@@ -15,6 +15,22 @@ const nextConfig: NextConfig = {
     // instead of the Babel plugin, so no Babel step is needed in the build.
     turbopackRustReactCompiler: true,
   },
+  // Vanity /docs → Blode.md. Sources are relative to basePath (/react-vello).
+  // statusCode 301 (not permanent:true/308) — GSC change-of-address prefers 301.
+  async redirects() {
+    return [
+      {
+        source: "/docs",
+        destination: "https://react-vello.blode.md/docs",
+        statusCode: 301,
+      },
+      {
+        source: "/docs/:path*",
+        destination: "https://react-vello.blode.md/docs/:path*",
+        statusCode: 301,
+      },
+    ];
+  },
 };
 
 export default nextConfig;

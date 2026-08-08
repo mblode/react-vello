@@ -1,0 +1,42 @@
+---
+title: Installation
+description: Install react-vello and its peer dependencies.
+---
+
+## Requirements
+
+- **React** 18 or 19
+- **react-dom** (peer dependency)
+- A browser with **WebGPU** enabled for the GPU path (see [WebGPU](/docs/webgpu))
+
+## Install
+
+```bash
+npm install react-vello react react-dom
+```
+
+Or with pnpm / yarn / bun:
+
+```bash
+pnpm add react-vello react react-dom
+```
+
+```bash
+yarn add react-vello react react-dom
+```
+
+```bash
+bun add react-vello react react-dom
+```
+
+## What you get
+
+The package includes:
+
+- The React host components (`Canvas`, `Rect`, `Text`, …)
+- `createVelloRoot` to mount a scene onto an HTML canvas
+- The WASM Vello renderer (no extra install step)
+
+## Next
+
+Continue to the [quickstart](/docs/quickstart).

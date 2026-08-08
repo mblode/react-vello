@@ -1,0 +1,108 @@
+---
+title: API overview
+description: Core exports — createVelloRoot, Canvas, Rect, and Text.
+---
+
+This page covers the main public surface from `react-vello`. Types live in the package; the shapes below match the published TypeScript definitions.
+
+## `createVelloRoot`
+
+Mount a React Vello tree on an existing `<canvas>`.
+
+```ts
+function createVelloRoot(
+  canvas: HTMLCanvasElement,
+  options?: RendererOptions
+): VelloRoot;
+```
+
+### `RendererOptions`
+
+| Option | Type | Description |
+| --- | --- | --- |
+| `onReady` | `(context: CanvasContext) => void` | Called when the renderer is ready (GPU or fallback). |
+| `onFrame` | `(ops: Uint8Array) => void` | Encoded frame buffer; valid only for the duration of the call. |
+| `onError` | `(error: unknown) => void` | WebGPU / WASM init failure. |
+| `debug` | `boolean` | Collect per-stage timings for `getStats()`. Off by default. |
+
+### `VelloRoot`
+
+| Method | Description |
+| --- | --- |
+| `render(children)` | Reconcile and draw a React tree. |
+| `unmount()` | Clear the container and stop rendering. |
+| `getContext()` | Access `canvas`, `backend`, `requestFrame`, and `getStats`. |
+
+```tsx
+import { Canvas, Rect, createVelloRoot } from "react-vello";
+
+const root = createVelloRoot(canvas, {
+  onReady: (ctx) => console.log(ctx.backend),
+  onError: (error) => console.error(error),
+});
+
+root.render(
+  <Canvas width={640} height={360}>
+    <Rect origin={[0, 0]} size={[100, 100]} fill={{ kind: "solid", color: "#000" }} />
+  </Canvas>
+);
+```
+
+## `Canvas`
+
+Root scene node. Sets presentation size and canvas attributes.
+
+| Prop | Type | Description |
+| --- | --- | --- |
+| `width` / `height` | `number` | Presentation size in CSS pixels. |
+| `autoSize` | `boolean` | Size from the canvas element / container. |
+| `devicePixelRatio` | `number` | Override DPR. |
+| `backgroundColor` | `string \| RgbaColor` | Clear color. |
+| `colorSpace` | `"srgb" \| "display-p3"` | Color space hint. |
+| `antialiasing` | `"fast" \| "msaa" \| "none"` | AA mode. |
+| `onReady` / `onError` | callbacks | Scene-level ready / error hooks. |
+| `children` | `ReactNode` | Scene nodes (`Rect`, `Text`, …). |
+
+Also accepts common DOM-ish props: `className`, `style`, `tabIndex`, `role`, `title`, `ariaLabel`.
+
+## `Rect`
+
+Axis-aligned rectangle with optional rounded corners.
+
+| Prop | Type | Description |
+| --- | --- | --- |
+| `origin` | `[x, y]` | Top-left corner. |
+| `size` | `[width, height]` | Extent. |
+| `width` / `height` | `number` | Alternate size shorthands. |
+| `radius` | `number \| Vec2 \| corners` | Corner radius. |
+| `fill` | `Paint` | Fill paint (`{ kind: "solid", color }`, …). |
+| `stroke` | `Stroke` | Stroke width, paint, join, cap, dash. |
+
+Inherits shared node props: `opacity`, `transform` / `x` / `y` / `rotation` / `scaleX` / `scaleY`, pointer and drag handlers, `visible`, `listening`, `draggable`, and more.
+
+## `Text`
+
+GPU-friendly text run.
+
+| Prop | Type | Description |
+| --- | --- | --- |
+| `children` / `text` | `ReactNode` / `string` | Content to draw. |
+| `origin` | `[x, y]` | Baseline origin. |
+| `font` | `TextFont` | `family`, `size`, optional `weight`, `style`, `lineHeight`. |
+| `fill` | `Paint` | Text color / paint. |
+| `maxWidth` | `number` | Wrap width. |
+| `align` | `"start" \| "center" \| "end"` | Horizontal alignment. |
+
+```tsx
+<Text
+  origin={[24, 48]}
+  font={{ family: "Inter", size: 18, weight: 500 }}
+  fill={{ kind: "solid", color: "#0f172a" }}
+>
+  Hello Vello
+</Text>
+```
+
+## Other host components
+
+Also exported: `Group`, `Path`, `Image`, `LinearGradient`, `RadialGradient`, `Mask`, `ClipPath`. See the TypeScript types in `react-vello` for full prop lists.
