@@ -11,6 +11,9 @@ import { absoluteUrl } from "@/lib/routes";
  */
 export const SITE_NAME = "Matthew Blode";
 
+/** The product, for the places that are not `og:site_name`. */
+const PRODUCT_NAME = "React Vello";
+
 export const OG_IMAGE = "/react-vello/opengraph-image.png";
 
 /**
@@ -29,21 +32,30 @@ export function pageMetadata({
 }): Metadata {
   const url = absoluteUrl(path);
 
+  // The layout's title template reaches `<title>` but not `og:title`: Next
+  // resolves the card title against `openGraph.title.template`, which is a
+  // different thing. Without this the share card for an inner page reads
+  // "React DOM stress test" over "Matthew Blode" and never names the product.
+  const cardTitle = `${title} | ${PRODUCT_NAME}`;
+
   return {
-    title: { absolute: title },
+    // Not `{ absolute }`: that opted every inner page out of the layout's
+    // "%s | React Vello" template, which is the one thing Rule 8 asks inner
+    // pages to do. blode-co/apps/web/.claude/knowledge/zone-conventions.md
+    title,
     description,
     alternates: { canonical: url },
     openGraph: {
       type: "website",
       siteName: SITE_NAME,
-      title,
+      title: cardTitle,
       description,
       url,
       images: [{ url: OG_IMAGE }],
     },
     twitter: {
       card: "summary_large_image",
-      title,
+      title: cardTitle,
       description,
       images: [OG_IMAGE],
     },
