@@ -27,12 +27,18 @@ const glideMono = localFont({
 
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_ORIGIN),
+  // "Product: what it does", colon and not a hyphen, under 60 characters so the
+  // SERP does not truncate it. Rule 8 of
+  // blode-co/apps/web/.claude/knowledge/zone-conventions.md.
   title: {
-    default: "React Vello - A React Renderer for Vello and WebGPU",
+    default: "React Vello: a React renderer for Vello and WebGPU",
     template: "%s | React Vello",
   },
   description:
     "Write 2D scenes as React components and draw them on the GPU. A custom reconciler turns the React tree into a Vello scene graph, rendered through WebGPU.",
+  // Person-level attribution as metadata, not only as footer HTML and JSON-LD.
+  authors: [{ name: "Matthew Blode", url: "https://blode.co" }],
+  creator: "Matthew Blode",
   applicationName: "react-vello",
   manifest: "/react-vello/site.webmanifest",
   alternates: { canonical: absoluteUrl(DEMO_PATH) },
@@ -44,6 +50,7 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: "summary_large_image",
+    creator: "@mattblode",
     images: [OG_IMAGE],
   },
   icons: {

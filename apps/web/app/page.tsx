@@ -5,7 +5,9 @@ import { DemoScene } from "@/components/demo-scene";
 import { InstallCommand } from "@/components/install-command";
 import { SiteFooter } from "@/components/site-footer";
 import { Reveal } from "@/components/ui/reveal";
+import { ZoneBreadcrumb } from "@/components/zone-breadcrumb";
 import { STRESS_TEST_REACT_VELLO_PATH } from "@/lib/routes";
+import { zoneRootJsonLd } from "@/lib/schema";
 
 const HEADING =
   "mt-8 mb-2 text-balance font-semibold text-[1.3125rem]/[1.3] tracking-[-0.011em]";
@@ -40,6 +42,14 @@ root.render(
 export default function DemoPage() {
   return (
     <>
+      {/* Static object literal, no user input. One @graph rather than a script
+          per node: see lib/schema.ts. Emitted here and not in the layout so the
+          benchmark routes do not each claim to be the zone root. */}
+      <script
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(zoneRootJsonLd) }}
+        type="application/ld+json"
+      />
+
       {/* Off-screen because the curve is the title treatment. It is real
           content either way, and without it the page has no h1. */}
       <h1 className="sr-only">
@@ -50,6 +60,12 @@ export default function DemoPage() {
       <DemoScene />
 
       <main className="full-bleed-bg relative z-3 mx-auto max-w-[62ch] px-4 py-8 text-[1.0625rem]/[1.65]">
+        {/* The edge back to the hub. It matches the BreadcrumbList in
+            lib/schema.ts exactly; Google reads a mismatch as a markup error. */}
+        <div className="mb-6">
+          <ZoneBreadcrumb product="React Vello" />
+        </div>
+
         <Reveal>
           <p className="mb-6 text-pretty text-[1.4375rem]/[1.35] tracking-[-0.011em]">
             A React tree, rasterised on the GPU. The curve above is four
