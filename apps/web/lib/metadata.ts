@@ -2,7 +2,15 @@ import type { Metadata } from "next";
 
 import { absoluteUrl } from "@/lib/routes";
 
-export const SITE_NAME = "React Vello";
+/**
+ * `og:site_name` is the person on every blode.co path, zones included: the 33
+ * zones are one site, and the product name is already in `og:title`, so
+ * repeating it there spends the only slot in the card that could say who made
+ * the thing. Rule 9 of
+ * blode-co/apps/web/.claude/knowledge/zone-conventions.md.
+ */
+export const SITE_NAME = "Matthew Blode";
+
 export const OG_IMAGE = "/react-vello/opengraph-image.png";
 
 /**
