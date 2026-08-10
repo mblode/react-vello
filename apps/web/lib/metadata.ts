@@ -14,7 +14,12 @@ export const SITE_NAME = "Matthew Blode";
 /** The product, for the places that are not `og:site_name`. */
 const PRODUCT_NAME = "React Vello";
 
-export const OG_IMAGE = "/react-vello/opengraph-image.png";
+/**
+ * Extensionless: the card is `app/opengraph-image.tsx`, which serves at
+ * `/react-vello/opengraph-image`. `metadataBase` already carries the zone, so
+ * this path is root-relative without the `/react-vello` prefix.
+ */
+export const OG_IMAGE = "/opengraph-image";
 
 /**
  * Page-level `openGraph` and `twitter` objects replace the layout's rather

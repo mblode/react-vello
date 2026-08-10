@@ -3,7 +3,11 @@
   "name": "React Vello",
   "slug": "react-vello",
   "seo": {
-    "siteUrl": "https://blode.co/react-vello/docs"
+    "siteUrl": "https://blode.co/react-vello/docs",
+    "siteName": "Matthew Blode"
+  },
+  "metadata": {
+    "ogImage": "https://blode.co/react-vello/opengraph-image"
   },
   "description": "A React renderer powered by Vello — Rust GPU rendering via WASM and WebGPU.",
   "navbar": {
