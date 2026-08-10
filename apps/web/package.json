@@ -22,7 +22,7 @@
     "clsx": "^2.1.1",
     "konva": "^10.3.0",
     "next": "16.3.0",
-    "posthog-js": "^1.407.2",
+    "posthog-js": "^1.414.0",
     "react": "19.2.8",
     "react-dom": "19.2.8",
     "react-konva": "^19.2.5",
