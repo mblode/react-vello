@@ -11,7 +11,8 @@
     "start": "next start",
     "lint": "tsc --project tsconfig.json --noEmit",
     "check-types": "tsc --project tsconfig.json --noEmit",
-    "test": "echo 'web package has no unit tests yet'"
+    "test": "echo 'web package has no unit tests yet'",
+    "smoke:docs-proxy": "node --experimental-strip-types scripts/docs-proxy-smoke.ts"
   },
   "dependencies": {
     "@base-ui/react": "^1.6.0",
