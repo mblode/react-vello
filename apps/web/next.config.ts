@@ -1,31 +1,6 @@
-import { execFileSync } from "node:child_process";
-
 import type { NextConfig } from "next";
 
 const isDev = process.env.NODE_ENV === "development";
-
-/*
- * Committer date of the build's HEAD, ISO 8601, handed to the sitemap as
- * `lastmod`. These four routes shipped without one, so crawlers had no recrawl
- * signal at all.
- *
- * next.config runs in Node outside prerender, so shelling out to git here is
- * safe where reading the clock inside a route would not be. The commit date
- * rather than the clock is the point: a build timestamp moves on every deploy
- * and would claim all four pages changed when none did.
- *
- * Undefined if git is unavailable, in which case no `lastmod` is emitted. That
- * is the state these URLs are in today, so the fallback cannot regress them.
- */
-const commitDate = (() => {
-  try {
-    return execFileSync("git", ["show", "-s", "--format=%cI", "HEAD"], {
-      encoding: "utf-8",
-    }).trim();
-  } catch {
-    return undefined;
-  }
-})();
 
 // Analytics is proxied through r.blode.co so tracker blockers do not drop it.
 // Defaulted rather than left empty: an unset var would compile down to
@@ -87,7 +62,6 @@ const securityHeaders = [
 const nextConfig: NextConfig = {
   // The site is served from blode.co/react-vello, not its own domain.
   basePath: "/react-vello",
-  ...(commitDate ? { env: { BUILD_COMMIT_DATE: commitDate } } : {}),
   headers() {
     /*
      * Catch-all first (and only, today). The pattern is `/:path*` and not
