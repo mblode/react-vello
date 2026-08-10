@@ -95,12 +95,48 @@ const rewriteRootUrls = (html: string): string => {
   return result;
 };
 
+/**
+ * The docs are a blode.md tenant, and its `docs.json` `name` drives both the
+ * title suffix and `og:site_name`. Behind this rewrite these pages are blode.co
+ * paths, so Rule 9 wants the person in `og:site_name`: the product is already
+ * in `og:title` ("Introduction · React Vello"), and repeating it there spends
+ * the one slot in the card that could say who made the thing.
+ *
+ * Rewritten here rather than in `docs.json` because `name` feeds the title too.
+ * Setting it to "Matthew Blode" would make every docs page read "Introduction ·
+ * Matthew Blode" and leave nothing on the card naming the product, which is the
+ * exact failure Rule 9's "Do Rule 8 first" section describes.
+ *
+ * This is a stopgap. The real home is a `seo.siteName` in blode.md, which would
+ * fix every tenant at once; the schema at https://blode.md/docs.json has no
+ * such key today, and `allmd`, `diffhub`, `dnd-grid` and `stratasync` all serve
+ * their product name here for the same reason.
+ *
+ * Both copies are replaced: the rendered `<meta>`, and the one React
+ * re-renders from the flight payload on hydration.
+ */
+const HOST_SITE_NAME = "Matthew Blode";
+const OG_SITE_NAME_META =
+  /(<meta[^>]*property="og:site_name"[^>]*content=")[^"]*(")/g;
+const OG_SITE_NAME_FLIGHT =
+  /(\\"og:site_name\\",\\"content\\":\\")[^\\"]*(\\")/g;
+
+const rewriteOgSiteName = (html: string): string =>
+  html
+    .replace(OG_SITE_NAME_META, `$1${HOST_SITE_NAME}$2`)
+    .replace(OG_SITE_NAME_FLIGHT, `$1${HOST_SITE_NAME}$2`);
+
 export const rewriteDocsHtml = (html: string): string =>
-  rewriteRootUrls(
-    html
-      .replaceAll(ASSET_URL_PATTERN, `$1${PUBLIC_ASSET_PREFIX}`)
-      .replaceAll(`${DOCS_ORIGIN}/docs`, `https://blode.co${PUBLIC_DOCS_PATH}`)
-      .replaceAll(DOCS_ORIGIN, `https://blode.co${PUBLIC_DOCS_PATH}`)
+  rewriteOgSiteName(
+    rewriteRootUrls(
+      html
+        .replaceAll(ASSET_URL_PATTERN, `$1${PUBLIC_ASSET_PREFIX}`)
+        .replaceAll(
+          `${DOCS_ORIGIN}/docs`,
+          `https://blode.co${PUBLIC_DOCS_PATH}`
+        )
+        .replaceAll(DOCS_ORIGIN, `https://blode.co${PUBLIC_DOCS_PATH}`)
+    )
   );
 
 const rewriteLocation = (location: string): string => {
