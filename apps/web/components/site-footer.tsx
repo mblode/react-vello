@@ -48,12 +48,6 @@ export function SiteFooter({ floating = false }: { floating?: boolean }) {
       </div>
       {/* The edge back to the hub: same origin behind a rewrite, so same tab
           and no rel. See blode-co/apps/web/.claude/knowledge/zone-conventions.md. */}
-      <a
-        className="no-underline transition-colors hover:text-foreground"
-        href="https://blode.co/projects"
-      >
-        All projects
-      </a>
     </footer>
   );
 }
