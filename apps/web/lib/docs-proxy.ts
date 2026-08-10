@@ -50,21 +50,20 @@ const getForwardHeaders = (request: Request): Headers => {
   return headers;
 };
 
-const normaliseHeaders = (
-  source: Headers,
-  ok: boolean,
-  cacheable: boolean
-): Headers => {
+const normaliseHeaders = (source: Headers): Headers => {
   const headers = new Headers(source);
-  for (const header of ["content-encoding", "content-length", "link"]) {
+  // Never forward upstream CDN TTLs: blodemd sets s-maxage=3600 on docs HTML,
+  // and a HIT here freezes og:site_name / og:image for an hour after publish.
+  for (const header of [
+    "content-encoding",
+    "content-length",
+    "link",
+    "cdn-cache-control",
+    "vercel-cdn-cache-control",
+  ]) {
     headers.delete(header);
   }
-  if (!(ok && cacheable)) {
-    for (const header of ["cdn-cache-control", "vercel-cdn-cache-control"]) {
-      headers.delete(header);
-    }
-    headers.set("cache-control", "no-store");
-  }
+  headers.set("cache-control", "no-store");
   return headers;
 };
 
@@ -160,16 +159,13 @@ export const proxyDocsRequest = async (
   const upstream = new URL(`${toUpstreamPath(slug)}${search}`, DOCS_ORIGIN);
 
   const response = await fetch(upstream, {
+    cache: "no-store",
     headers: getForwardHeaders(request),
     method: request.method,
     redirect: "manual",
   });
 
-  const headers = normaliseHeaders(
-    response.headers,
-    response.ok,
-    request.method === "GET"
-  );
+  const headers = normaliseHeaders(response.headers);
 
   const location = response.headers.get("location");
   if (location) {
