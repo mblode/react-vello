@@ -55,6 +55,12 @@ export function pageMetadata({
     },
     twitter: {
       card: "summary_large_image",
+      // The layout sets this too, but a page-level `twitter` object replaces
+      // the parent's wholesale rather than merging, so every route going
+      // through this helper loses it. Same shape as the `og:site_name` loss
+      // above: Rule 10, and the field most likely to be missing on an inner
+      // route while the root looks fine.
+      creator: "@mattblode",
       title: cardTitle,
       description,
       images: [OG_IMAGE],
