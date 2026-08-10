@@ -1,7 +1,5 @@
 import type { NextConfig } from "next";
 
-import { ROUTES } from "./lib/routes";
-
 const isDev = process.env.NODE_ENV === "development";
 
 // Analytics is proxied through r.blode.co so tracker blockers do not drop it.
@@ -10,24 +8,6 @@ const isDev = process.env.NODE_ENV === "development";
 // state blode.co/dnd-grid shipped before this sweep.
 const posthogOrigin =
   process.env.NEXT_PUBLIC_POSTHOG_HOST ?? "https://r.blode.co";
-
-// Headers that cannot change what renders. These go everywhere, including on
-// the proxied docs.
-const baseSecurityHeaders = [
-  { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
-  { key: "X-Frame-Options", value: "SAMEORIGIN" },
-  { key: "X-Content-Type-Options", value: "nosniff" },
-  { key: "X-DNS-Prefetch-Control", value: "on" },
-  {
-    key: "Strict-Transport-Security",
-    value: "max-age=63072000; includeSubDomains; preload",
-  },
-  {
-    key: "Permissions-Policy",
-    value: "camera=(), microphone=(), geolocation=(), payment=()",
-  },
-  { key: "Cross-Origin-Opener-Policy", value: "same-origin" },
-];
 
 /*
  * `'wasm-unsafe-eval'` is load-bearing here and is the whole reason this app's
@@ -40,6 +20,12 @@ const baseSecurityHeaders = [
  *
  * `blob:` in `worker-src` and `img-src` covers wasm-bindgen's worker and the
  * canvas readbacks the benchmarks use.
+ *
+ * Proxied `/docs` gets the same policy. Upstream blode.md ships no CSP, and
+ * the proxy rewrites platform assets onto same-origin `/docs/_chunks/...`
+ * paths, so `'self'` covers scripts, styles, and fonts. Stratasync applies its
+ * zone CSP the same way via a catch-all — carving docs out left them with
+ * every other security header and no Content-Security-Policy at all.
  */
 const contentSecurityPolicy = [
   "default-src 'self'",
@@ -56,38 +42,36 @@ const contentSecurityPolicy = [
   "upgrade-insecure-requests",
 ].join("; ");
 
+const securityHeaders = [
+  { key: "Content-Security-Policy", value: contentSecurityPolicy },
+  { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
+  { key: "X-Frame-Options", value: "SAMEORIGIN" },
+  { key: "X-Content-Type-Options", value: "nosniff" },
+  { key: "X-DNS-Prefetch-Control", value: "on" },
+  {
+    key: "Strict-Transport-Security",
+    value: "max-age=63072000; includeSubDomains; preload",
+  },
+  {
+    key: "Permissions-Policy",
+    value: "camera=(), microphone=(), geolocation=(), payment=()",
+  },
+  { key: "Cross-Origin-Opener-Policy", value: "same-origin" },
+];
+
 const nextConfig: NextConfig = {
   // The site is served from blode.co/react-vello, not its own domain.
   basePath: "/react-vello",
   headers() {
     /*
-     * Every matching rule applies in array order and a later one wins per
-     * header key, so the catch-all comes FIRST and the CSP is layered on after
-     * it. Listed last, a catch-all silently overwrites every rule above it.
-     *
-     * The catch-all is `/:path*` and not `/(.*)`: with `basePath` set Next
-     * prefixes the source, and `/react-vello/(.*)` does not match the bare
-     * `/react-vello` — the zone root, and the most-visited URL here. That miss
-     * is live on blode.co/allmd and blode.co/stratasync today, where inner
-     * pages carry the full policy and the landing page carries none.
-     *
-     * The CSP is then attached per route rather than in the catch-all, because
-     * `/docs` is a reverse proxy onto blode.md and its markup is the
-     * platform's, not this app's. Browsers intersect multiple CSP headers, so
-     * a catch-all policy would keep blocking the upstream's own asset and
-     * analytics hosts no matter what the proxy rewrites. Same carve-out
-     * dnd-grid makes, for the same upstream.
+     * Catch-all first (and only, today). The pattern is `/:path*` and not
+     * `/(.*)`: with `basePath` set Next prefixes the source, and
+     * `/react-vello/(.*)` does not match the bare `/react-vello` — the zone
+     * root, and the most-visited URL here. That miss is live on
+     * blode.co/allmd and blode.co/stratasync today, where inner pages carry
+     * the full policy and the landing page carries none.
      */
-    return Promise.resolve([
-      { headers: baseSecurityHeaders, source: "/:path*" },
-      ...ROUTES.map((route) => ({
-        // `ROUTES` paths are basePath-relative and "/" is the zone root.
-        source: route,
-        headers: [
-          { key: "Content-Security-Policy", value: contentSecurityPolicy },
-        ],
-      })),
-    ]);
+    return Promise.resolve([{ headers: securityHeaders, source: "/:path*" }]);
   },
   reactCompiler: true,
   // The Vite app wrapped its tree in <StrictMode>; Next leaves this off by
