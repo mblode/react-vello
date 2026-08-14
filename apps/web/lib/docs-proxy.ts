@@ -35,9 +35,17 @@ const FORWARDED_REQUEST_HEADERS = [
   "accept-language",
   "if-modified-since",
   "if-none-match",
+  "next-router-prefetch",
+  "next-router-segment-prefetch",
+  "next-router-state-tree",
+  "next-url",
   "range",
+  "rsc",
   "user-agent",
 ];
+
+const isRewritableDocsBody = (contentType: string) =>
+  contentType.includes("text/html") || contentType.includes("text/x-component");
 
 const getForwardHeaders = (request: Request): Headers => {
   const headers = new Headers();
@@ -178,7 +186,7 @@ export const proxyDocsRequest = async (
   }
 
   const contentType = response.headers.get("content-type") ?? "";
-  const body = contentType.includes("text/html")
+  const body = isRewritableDocsBody(contentType)
     ? rewriteDocsHtml(await response.text())
     : response.body;
 
