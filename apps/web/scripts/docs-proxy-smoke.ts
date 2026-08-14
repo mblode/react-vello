@@ -32,6 +32,15 @@ for (const html of OG_SITE_NAME_CASES) {
 const titleHtml = `<meta property="og:title" content="Introduction · ${PRODUCT}"/>`;
 assert.equal(rewriteDocsHtml(titleHtml), titleHtml);
 
+const flight = '1:{"href":"/_docs/_next/static/chunk.js","llms":"/llms.txt"}';
+const rewrittenFlight = rewriteDocsHtml(flight);
+assert.match(
+  rewrittenFlight,
+  /\/react-vello\/docs\/_chunks\/static\/chunk\.js/
+);
+assert.match(rewrittenFlight, /\/react-vello\/docs\/llms\.txt/);
+assert.equal(rewrittenFlight.includes("/_docs/_next/"), false);
+
 // twitter:creator is absent upstream, so it is added rather than rewritten.
 const HEAD_ONLY = "<html><head><title>x</title></head><body></body></html>";
 const withCreator = rewriteDocsHtml(HEAD_ONLY);
