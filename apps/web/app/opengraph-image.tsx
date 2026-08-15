@@ -1,4 +1,5 @@
 import { renderZoneOgImage } from "@/app/og-image-shared";
+import { OgLogo } from "@/app/og-logo";
 
 export {
   OG_CONTENT_TYPE as contentType,
@@ -22,11 +23,9 @@ export const alt = "React Vello";
  */
 export default function OpengraphImage() {
   return renderZoneOgImage({
-    badge: "VELLO",
-    eyebrow: "blode.co/react-vello",
-    // Shorter than the meta description, which runs long for the SERP. A card
-    // is read in a feed, at a glance.
-    subtitle: "React components rendered on the GPU through Vello and WebGPU.",
+    background: "#0b0f19",
+    color: "#e8edf5",
+    logo: <OgLogo />,
     title: "React Vello",
   });
 }
