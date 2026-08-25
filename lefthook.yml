@@ -11,5 +11,5 @@ pre-commit:
     # oxfmt on its own for the types ultracite would format but never lint.
     - name: oxfmt
       glob: "*.{json,jsonc,css}"
-      run: npx oxfmt {staged_files}
+      run: npx oxfmt --no-error-on-unmatched-pattern {staged_files}
       stage_fixed: true
