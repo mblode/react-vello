@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import localFont from "next/font/local";
+import { Geist_Mono, Inter } from "next/font/google";
 import type { ReactNode } from "react";
 
 import { SiteHeader } from "@/components/site-header";
@@ -8,20 +8,15 @@ import { absoluteUrl, DEMO_PATH } from "@/lib/routes";
 
 import "./globals.css";
 
-const glide = localFont({
-  src: [
-    { path: "./fonts/glide-variable.woff2", style: "normal" },
-    { path: "./fonts/glide-variable-italic.woff2", style: "italic" },
-  ],
-  variable: "--font-glide",
-  weight: "100 950",
+const inter = Inter({
+  subsets: ["latin"],
+  variable: "--font-inter",
   display: "swap",
 });
 
-const glideMono = localFont({
-  src: "./fonts/glide-mono.woff2",
-  variable: "--font-glide-mono",
-  weight: "400",
+const geistMono = Geist_Mono({
+  subsets: ["latin"],
+  variable: "--font-geist-mono",
   display: "swap",
 });
 
@@ -75,7 +70,7 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
-    <html className={`dark ${glide.variable} ${glideMono.variable}`} lang="en">
+    <html className={`dark ${inter.variable} ${geistMono.variable}`} lang="en">
       <head>
         <link href={process.env.NEXT_PUBLIC_POSTHOG_HOST} rel="preconnect" />
       </head>
