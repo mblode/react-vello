@@ -4,11 +4,11 @@
 @custom-variant dark (&:is(.dark *));
 
 /* Tokens tracked against blode-ui/styles/globals.css. The docs-site-only
-   utilities are left out; Glide is wired up through next/font in
-   app/layout.tsx. */
+   utilities are left out; Inter and Geist Mono are wired up through
+   next/font in app/layout.tsx. */
 @theme inline {
-  --font-sans: var(--font-glide);
-  --font-mono: var(--font-glide-mono);
+  --font-sans: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-geist-mono), ui-monospace, monospace;
   --radius-sm: calc(var(--radius) - 4px);
   --radius-md: calc(var(--radius) - 2px);
   --radius-lg: var(--radius);
@@ -123,9 +123,6 @@
 
   body {
     @apply bg-background font-sans font-normal text-foreground antialiased;
-    /* Glide is a variable font covering 100-950, so every weight used here is a
-       real one. Keep synthesis off: it only ever fakes a weight we already have. */
-    font-synthesis-weight: none;
     text-rendering: optimizeLegibility;
   }
 
