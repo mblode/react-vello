@@ -70,6 +70,7 @@ if (!isLocalHost()) {
     api_host: process.env.NEXT_PUBLIC_POSTHOG_HOST,
     before_send: (event) => {
       if (event && isNoisyException(event)) return null;
+      if (event) event.properties.project = "react-vello";
       return event;
     },
     defaults: "2026-05-30",
